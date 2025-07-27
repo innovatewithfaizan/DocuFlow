@@ -1,0 +1,8 @@
+conda info --envs
+conda activate C:\Users\user\Desktop\LLMops\document_portal\llmops
+pip install -r requirements.txt
+
+
+
+
+-e . : this will be aded to reqq afterwards
