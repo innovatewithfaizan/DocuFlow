@@ -1,0 +1,29 @@
+faiss_db:
+  collection_name: "document_portal"
+
+
+embedding_model:
+  providor: "openai"
+  model_name: "text-embedding-3-small"
+
+retriever:
+  top_k: 10
+
+llm:
+  groq:
+    provider: "groq"
+    model_name: "deepseek-r1-distill-llama-70b"
+    temperature: 0
+    max_output_tokens: 2048
+
+  google:
+    provider: "google"
+    model_name: "gemini-2.0-flash"
+    temperature: 0
+    max_output_tokens: 2048
+
+  openai:
+    providor: "openai"
+    model_name: "gpt-3.5-turbo"
+    temperature: 0.7
+    max_tokens: 1000

@@ -13,3 +13,4 @@ streamlit
 langchain-core[tracing]
 pytest
 streamlit
+langchain_openai
