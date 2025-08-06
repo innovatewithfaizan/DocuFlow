@@ -23,7 +23,7 @@ llm:
     max_output_tokens: 2048
 
   openai:
-    providor: "openai"
-    model_name: "gpt-3.5-turbo"
+    provider: "openai"
+    model_name: "gpt-4o"
     temperature: 0.7
     max_tokens: 1000
