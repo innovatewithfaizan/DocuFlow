@@ -12,7 +12,7 @@ class DocumentIngestion:
     Handles saving, reading, and combining of PDFs for comparison with session-based versioning.
     """
 
-    def __init__(self, base_dir: str = "data/document_compare", session_id=None):
+    def __init__(self, base_dir: str = "data\\document_compare", session_id=None):
         self.log = CustomLogger().get_logger(__name__)
         self.base_dir = Path(base_dir)
         self.session_id = session_id or f"session_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
@@ -23,7 +23,7 @@ class DocumentIngestion:
 
         pass
 
-    def save_uploaded_file(self,reference_file,actual_file):
+    def save_uploaded_files(self,reference_file,actual_file):
 
         try:
             self.delete_existing_files()
@@ -45,7 +45,7 @@ class DocumentIngestion:
             return ref_path, act_path
 
         except Exception as e:
-            self.log.error("Error reading PDF", file=str(pdf_path), error=str(e))
+            self.log.error("Error reading PDF", error=str(e))
             raise DocumentPortalException("Error reading PDF", sys)
 
 
@@ -83,3 +83,24 @@ class DocumentIngestion:
             self.log.error(f"Error deleting existing file: {e}")
             raise DocumentPortalException("An errror occurred while deleting existing file.", sys)
         
+
+    def combine_documents(self)-> str:
+        try:
+            content_dict = {}
+            doc_parts = []
+
+            for filename in sorted(self.base_dir.iterdir()):
+                if filename.is_file() and filename.suffix == ".pdf":
+                    content_dict[filename.name] = self.read_pdf(filename)
+
+            for filename, content in content_dict.items():
+                doc_parts.append(f"Document: {filename}\n{content}")
+
+            combined_text = "\n\n".join(doc_parts)
+            self.log.info("Documents combined", count=len(doc_parts))
+            return combined_text
+
+        except Exception as e:
+            self.log.error(f"Error Combining Documents: {e}")
+            raise DocumentPortalException("An error occured while ombining documents.", sys)
+    
