@@ -15,15 +15,34 @@ class DocumentIngestion:
     def __init__(self, base_dir: str = "data/document_compare", session_id=None):
         self.log = CustomLogger().get_logger(__name__)
         self.base_dir = Path(base_dir)
-        self.base_dir.mkdir(parents=True, exist_ok=True)
+        self.session_id = session_id or f"session_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+        self.session_path = self.base_dir / self.session_id
+        self.session_path.mkdir(parents=True, exist_ok=True)
+
+        self.log.info("DocumentComparator initialized", session_path=str(self.session_path))
 
         pass
 
-    def save_uploaded_file(self):
+    def save_uploaded_file(self,reference_file,actual_file):
 
         try:
+            self.delete_existing_files()
+            self.log.info("Existing file deleted successsfully.")
 
-            pass
+            ref_path = self.base_dir/reference_file.name
+            act_path = self.base_dir/actual_file.name
+
+            if not reference_file.name.endswith(".pdf") or not actual_file.name.endswith(".pdf"):
+                raise ValueError("Only PDF files are allowed.")
+            
+            with open(ref_path, "wb") as f:
+                f.write(reference_file.getbuffer())
+
+            with open(act_path, "wb") as f:
+                f.write(actual_file.getbuffer())
+
+            self.log.info("Files Saved", reference=str(ref_path), actual = str(act_path))
+            return ref_path, act_path
 
         except Exception as e:
             self.log.error("Error reading PDF", file=str(pdf_path), error=str(e))
@@ -51,3 +70,16 @@ class DocumentIngestion:
         except Exception as e:
             self.log.error("Error reading PDF", file=str(pdf_path), error=str(e))
             raise DocumentPortalException("Error reading PDF", sys)
+        
+    def delete_existing_files(self):
+        try:
+            if self.base_dir.exists() and self.base_dir.is_dir():
+                for file in self.base_dir.iterdir():
+                    if file.is_file():
+                        file.unlink()
+                        self.log.info("file deleted", path=str(file))
+                self.log.info("Directory cleanedd", directory=str(self.base_dir))
+        except Exception as e:
+            self.log.error(f"Error deleting existing file: {e}")
+            raise DocumentPortalException("An errror occurred while deleting existing file.", sys)
+        
