@@ -104,3 +104,18 @@ class DocumentIngestion:
             self.log.error(f"Error Combining Documents: {e}")
             raise DocumentPortalException("An error occured while ombining documents.", sys)
     
+    def clean_old_sessions(self, keep_latest: int = 3):
+        try:
+            sessions_folders = sorted(
+                [f for f in self.base_dir.iterdir() if f.is_dir()], reverse=True
+            )
+
+            for folder in sessions_folders[keep_latest:]:
+                for file in folder.iterdir():
+                    file.unlink()
+                folder.rmdir()
+                self.log.info("Old session folder deleted", path=str(folder))
+            
+        except Exception as e:
+            self.log.error("Error in clearing the old sessions", error = str(e))
+            raise DocumentPortalException("Error cleaning old session", sys)
