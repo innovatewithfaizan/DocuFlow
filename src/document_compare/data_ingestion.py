@@ -78,7 +78,7 @@ class DocumentIngestion:
                     if file.is_file():
                         file.unlink()
                         self.log.info("file deleted", path=str(file))
-                self.log.info("Directory cleanedd", directory=str(self.base_dir))
+                self.log.info("Directory cleaned", directory=str(self.base_dir))
         except Exception as e:
             self.log.error(f"Error deleting existing file: {e}")
             raise DocumentPortalException("An errror occurred while deleting existing file.", sys)
