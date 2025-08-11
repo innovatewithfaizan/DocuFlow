@@ -55,7 +55,7 @@ class SingleDocIngestor:
             chunks = splitter.split_documents(documents)
             self.log.info("Documents split into chunks", count=len(chunks))
 
-            embeddings = self.model_loader.load_embeddings
+            embeddings = self.model_loader.load_embeddings()
             vectorstore = FAISS.from_documents(documents=chunks,embedding=embeddings)
 
             vectorstore.save_local(str(self.faiss_dir))

@@ -20,7 +20,7 @@ class ConversationalRAG:
             self.session_id = session_id
             self.retriever = retriever
 
-            self.llm = self._load_llm
+            self.llm = self._load_llm()
             self.contextualize_prompt = PROMPT_REGISTRY[PromptType.CONTEXTUALIZE_QUESTION.value]
             self.qa_prompt = PROMPT_REGISTRY[PromptType.CONTEXT_QA.value]
             self.history_aware_retriever = create_history_aware_retriever(
@@ -28,7 +28,7 @@ class ConversationalRAG:
             )
             self.log.info("Created hisory-aware retriever", session_id=session_id)
             self.qa_chain = create_stuff_documents_chain(self.llm, self.qa_prompt)
-            self.rag_chain = create_retrieval_chain(self.history_aware_retriever)
+            self.rag_chain = create_retrieval_chain(self.history_aware_retriever,self.qa_chain)
             self.log.info("Created RAG chain", session_id=session_id)
 
             self.chain = RunnableWithMessageHistory(
@@ -55,8 +55,12 @@ class ConversationalRAG:
             raise DocumentPortalException("Failed to load LLM", sys)
         
     def _get_session_history(self,session_id: str):
+        _session_histories = {}
+        
         try:
-            pass
+            if session_id not in _session_histories:
+                _session_histories[session_id] = ChatMessageHistory()
+            return _session_histories[session_id]
         except Exception as e:
             self.log.error("Failed to acess session history", session_id=session_id, error=str(e))
             raise DocumentPortalException("Failed to retrieve session history", sys)
