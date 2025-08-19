@@ -76,6 +76,8 @@ class DocumentIngestor:
                 
                 self.log.info("ALl documents loaded", total_docs=len(docs), session_id=self.session_id)
 
+                return self._create_retriever(documents)
+
         except Exception as e:
             self.log.error("Errror to ingest files", error = str(e))
             raise DocumentPortalException("Ingestion error in DocumentIngestor", sys)
