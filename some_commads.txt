@@ -6,3 +6,6 @@ pip install -r requirements.txt
 
 
 -e . : this will be aded to reqq afterwards
+
+
+uvicorn main:app --reload

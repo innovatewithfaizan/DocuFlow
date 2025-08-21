@@ -5,10 +5,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import os
 from typing import List, Optional, Any, Dict
-
-# from src.document_analyzer.data_analysis import DocumentAnalyzer
-# from src.document_compare.document_comparator import DocumentComparatorLLM
-# from src.document_chat.retrieval import ConversationalRAG
+from src.document_ingestion.data_ingestion import (
+    DocHandler,
+    DocumentComparator,
+    ChatIngestor
+)
+from src.document_analyzer.data_analysis import DocumentAnalyzer
+from src.document_compare.document_comparator import DocumentComparatorLLM
+from src.document_chat.retrieval import ConversationalRAG
 
 
 app = FastAPI(title="Document Portal API", version="0.1")
