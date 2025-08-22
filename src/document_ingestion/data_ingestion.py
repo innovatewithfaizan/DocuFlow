@@ -102,11 +102,39 @@ class DocHandler:
         self.log.info("DocHandler initialized", session_id=self.session_id, session_path=self.session_path)
         
 
-    def save_pdf(self):
-        pass
+    def save_pdf(self, uploaded_file) -> str:
+        try:
+            filename = os.path.basename(uploaded_file.name)
+            if not filename.lower().endswith(".pdf"):
+                raise ValueError("Invalid file type. Only PDF's are allowed")
+            save_path = os.path.join(self.session_path, filename)
+            with open(save_path, "wb") as f:
+                if hasattr(uploaded_file, "read"):
+                    f.write(uploaded_file.read())
+                else:
+                    f.write(uploaded_file.getbuffer())
+            self.log.info("PDF saved successfully", filename=filename, save_path=save_path, session_id= self.session_id)
+            return save_path
+        except Exception as e:
+            self.log.error("failed to save PDF", error=str(e), session_id=self.session_id)
+            raise DocumentPortalException(f"Failed to save PDF: {str(e)}", e) from e
     
-    def read_pdf(self):
-        pass
+    
+    
+    def read_pdf(self, pdf_path: str) -> str:
+        try:
+            text_chunks = []
+            with fitz.open(pdf_path) as doc:
+                for page_num in range(doc.page_count):
+                    page = doc.load_page(page_num)
+                    text_chunks.append(f"\n--- Page{page_num +1} ---\n{page.get_text()}")
+                    text = "\n".join(text_chunks)
+                    self.log.info("PDF read successfully", pdf_path=pdf_path, session_id=self.session_id, pages=len(text_chunks))
+                    return text
+        except Exception as e:
+            self.log.error("Failed to read PDF", error=str(e), pdf_path=pdf_path, session_id=self.session_id, pages=len(text_chunks))
+            raise DocumentPortalException(f"Could not process PDF: {pdf_path}", e) from e
+        
 
 class DocumentComparator:
     def __init__(self):
