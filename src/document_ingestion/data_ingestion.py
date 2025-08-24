@@ -24,7 +24,7 @@ class FaissManager:
     def __init__(self, index_dir: Path, model_loader: Optional[ModelLoader] = None):
         self.index_dir = Path(index_dir)
         self.index_dir.mkdir(parents=True, exist_ok=True)
-
+        
         self.meta_path = self.index_dir / "ingested_meta.json"
         self._meta: Dict[str, Any] = {"rows": {}}
 
@@ -80,8 +80,20 @@ class FaissManager:
             return self.vs
 
 class ChatIngestor:
-    def __init__(self):
-        pass
+    def __init__( self,
+        temp_base: str = "data",
+        faiss_base: str = "faiss_index",
+        use_session_dirs: bool = True,
+        session_id: Optional[str] = None,
+    ):
+        try:
+            self.model_loader = ModelLoader()
+
+            self.use_session = use_session_dirs
+            self.session_id = session_id or _session_id()
+        
+        except Exception as e:
+            log.error("Failed to initialize ChatIngestor", error=str(e))
 
     def _resolve_dir(self):
         pass
