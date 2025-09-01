@@ -8,12 +8,15 @@ from typing import List, Optional, Any, Dict
 from src.document_ingestion.data_ingestion import (
     DocHandler,
     DocumentComparator,
-    ChatIngestor
+    ChatIngestor,
+    FaissManager
 )
 from src.document_analyzer.data_analysis import DocumentAnalyzer
 from src.document_compare.document_comparator import DocumentComparatorLLM
 from src.document_chat.retrieval import ConversationalRAG
 
+FAISS_BASE = os.getenv("FAISS_BASE", "faiss_index")
+UPLOAD_BASE = os.getenv("UPLOADED_BASE", "data")
 
 app = FastAPI(title="Document Portal API", version="0.1")
 
