@@ -13,7 +13,7 @@ log = CustomLogger().get_logger(__name__)
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 
 def _session_id(prefix: str = "session")-> str:
-    return f"{prefix}_{datetime.now(ist).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+    return f"{prefix}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
 
 def save_uploaded_files(uploaded_files: Iterable, target_dir: Path) -> List[Path]:
     try:

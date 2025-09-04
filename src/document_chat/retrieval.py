@@ -10,7 +10,8 @@ from langchain_community.vectorstores import FAISS
 
 from utils.model_loader import ModelLoader
 from exception.custom_exception import DocumentPortalException
-from logger.custom_logger import CustomLogger as log
+from logger.custom_logger import CustomLogger
+log = CustomLogger().get_logger(__name__)
 from prompt.prompt_library import PROMPT_REGISTRY
 from model.models import PromptType
 
