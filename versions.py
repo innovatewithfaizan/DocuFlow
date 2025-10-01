@@ -18,7 +18,8 @@ packages = [
     "python-multipart",
     "docx2txt",
     "langchain-openai",
-    "pypdf"
+    "pypdf",
+    "pytest"
 ]
 for pkg in packages:
     try:

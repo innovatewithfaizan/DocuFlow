@@ -17,4 +17,5 @@ pytest==8.4.1
 docx2txt==0.9
 langchain-openai==0.3.28
 pypdf==5.9.0
+pytest==8.4.1
 -e .
