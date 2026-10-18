@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 from dotenv import load_dotenv
 from utils.config_loader import load_config
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
@@ -11,6 +12,29 @@ from logger.custom_logger import CustomLogger
 from exception.custom_exception import DocumentPortalException
 log = CustomLogger().get_logger(__name__)
 
+
+def _load_bundled_api_keys() -> None:
+    """
+    On ECS the task definition injects every key as one JSON secret named API_KEYS
+    (see .github/workflows/task_definition.json). Expand it into the individual
+    variables the loaders read. Variables that are already set take precedence.
+    """
+    raw = os.getenv("API_KEYS")
+    if not raw:
+        return
+    try:
+        bundle = json.loads(raw)
+    except json.JSONDecodeError:
+        log.warning("API_KEYS is set but is not valid JSON; ignoring it")
+        return
+    if not isinstance(bundle, dict):
+        log.warning("API_KEYS must be a JSON object; ignoring it")
+        return
+    for key, value in bundle.items():
+        if value and not os.getenv(key):
+            os.environ[key] = str(value)
+
+
 class ModelLoader:
     
     """
@@ -20,6 +44,7 @@ class ModelLoader:
     def __init__(self):
         
         load_dotenv()
+        _load_bundled_api_keys()
         self._validate_env()
         self.config=load_config()
         log.info("Configuration loaded successfully", config_keys=list(self.config.keys()))

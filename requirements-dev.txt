@@ -1,0 +1,5 @@
+# Local development and CI (not installed in the Docker image)
+-r requirements.txt
+pytest==8.4.1
+pylint==3.3.7
+ipykernel==6.30.0

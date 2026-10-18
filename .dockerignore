@@ -1,11 +1,31 @@
+# VCS and CI
+.git
+.gitignore
+.github/
+
+# Secrets must never be copied into the image
+.env
+.env.*
+
+# Python artifacts
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.egg-info/
+.pytest_cache/
 .Python
 env/
 venv/
-.git
-.gitignore
+.venv/
+
+# Runtime data: uploads, indexes and logs from local runs
 *.log
 logs/
+data/
+faiss_index/
+
+# Not needed at runtime
+notebook/
+tests/
+infrastructure/
