@@ -3,8 +3,6 @@ import re
 import uuid
 from pathlib import Path
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
-import uuid
 from typing import Iterable, List
 from logger.custom_logger import CustomLogger
 from exception.custom_exception import DocuFlowException
@@ -12,8 +10,17 @@ log = CustomLogger().get_logger(__name__)
 
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 
+# Session ids become directory names under data/ and faiss_index/, so only allow
+# characters that cannot escape those directories (no "/", "\" or "..").
+_SESSION_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
+
 def _session_id(prefix: str = "session")-> str:
     return f"{prefix}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+
+def validate_session_id(session_id: str) -> str:
+    if not isinstance(session_id, str) or not _SESSION_ID_RE.fullmatch(session_id):
+        raise ValueError(f"Invalid session_id {session_id!r}: use 1-64 letters, digits, '_' or '-'")
+    return session_id
 
 def save_uploaded_files(uploaded_files: Iterable, target_dir: Path) -> List[Path]:
     try:

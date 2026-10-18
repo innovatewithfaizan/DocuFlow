@@ -42,4 +42,4 @@ class DocumentComparatorLLM:
             return df
         except Exception as e:
             self.log.error("Error formatting response into DataFrame", error=str(e))
-            DocuFlowException("Error formatting response", sys)
+            raise DocuFlowException("Error formatting response", sys)
