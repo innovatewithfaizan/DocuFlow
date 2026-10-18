@@ -1,9 +1,19 @@
 name: RAG evaluation
 
-# Retrieval hit rate and answer faithfulness on a public paper (evaluation/README.md).
-# Runs on GitHub Models with the workflow's own token: no API keys or secrets.
+# See evaluation/README.md.
+# - Retrieval runs on every PR that touches evaluation/, with local embeddings: free, no keys.
+# - Answer faithfulness calls paid APIs, so it only runs when started by hand
+#   (Actions > RAG evaluation > Run workflow) and only if OPENAI_API_KEY is configured.
 on:
   workflow_dispatch:
+    inputs:
+      answers:
+        description: "Also generate and judge answers (uses OPENAI_API_KEY, ~US$0.25 per run)"
+        type: boolean
+        default: true
+      judge_model:
+        description: "OpenAI model used as the judge"
+        default: "gpt-4.1"
   pull_request:
     paths:
       - "evaluation/**"
@@ -12,7 +22,6 @@ on:
 
 permissions:
   contents: read
-  models: read
 
 concurrency:
   group: evaluation-${{ github.ref }}
@@ -22,6 +31,8 @@ jobs:
   evaluate:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      HAS_OPENAI_KEY: ${{ secrets.OPENAI_API_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -31,30 +42,20 @@ jobs:
       - name: Install
         run: pip install -r requirements.txt -r evaluation/requirements.txt
 
-      - name: Retrieval, local embeddings (bge-small, no API)
+      - name: Retrieval, local embeddings (bge-small)
         run: python -m evaluation.run_eval --embeddings fastembed --retrieval-only
 
-      - name: Check GitHub Models access
+      - name: Retrieval and answers, OpenAI
+        if: github.event_name == 'workflow_dispatch' && inputs.answers && env.HAS_OPENAI_KEY == 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          probe() {
-            code=$(curl -sS -o body.json -w "%{http_code} %{content_type}" -X POST \
-              "https://models.github.ai/inference/$1" \
-              -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" -d "$2")
-            echo "$1 -> $code"; head -c 300 body.json; echo
-            case "$code" in 200\ application/json*) ;; *) return 1 ;; esac
-          }
-          probe embeddings '{"model":"openai/text-embedding-3-small","input":["probe"]}'
-          probe chat/completions '{"model":"openai/gpt-4o-mini","messages":[{"role":"user","content":"Reply OK"}],"max_tokens":3}'
-
-      - name: Retrieval and answers, GitHub Models
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # free tier allows ~15 requests/minute, hence the spacing
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: >-
-          python -m evaluation.run_eval --embeddings github --llm github
-          --judge-provider github --judge-model openai/gpt-4o --min-interval 4.5
+          python -m evaluation.run_eval --embeddings openai --llm openai
+          --judge-provider openai --judge-model "${{ inputs.judge_model }}"
+
+      - name: Explain skipped answers step
+        if: github.event_name == 'workflow_dispatch' && inputs.answers && env.HAS_OPENAI_KEY != 'true'
+        run: echo "::warning::Answers were not evaluated; add an OPENAI_API_KEY repository secret and re-run."
 
       - name: Job summary
         if: always()

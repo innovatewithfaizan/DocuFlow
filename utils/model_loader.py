@@ -13,12 +13,8 @@ PROVIDER_KEYS = {
     "openai": "OPENAI_API_KEY",
     "groq": "GROQ_API_KEY",
     "google": "GOOGLE_API_KEY",
-    # GitHub Models: OpenAI-compatible, authenticated with a GitHub token
-    # (in Actions, the workflow's GITHUB_TOKEN with `models: read`).
-    "github": "GITHUB_TOKEN",
     "fastembed": None,
 }
-GITHUB_MODELS_URL = os.getenv("GITHUB_MODELS_URL", "https://models.github.ai/inference")
 
 
 def _load_bundled_api_keys() -> None:
@@ -90,17 +86,6 @@ class ModelLoader:
             if provider == "google":
                 from langchain_google_genai import GoogleGenerativeAIEmbeddings
                 return GoogleGenerativeAIEmbeddings(model=emb_cfg["google_model_name"], google_api_key=api_key)  # type: ignore
-            if provider == "github":
-                from langchain_openai import OpenAIEmbeddings
-                return OpenAIEmbeddings(
-                    model=emb_cfg["github_model_name"],
-                    api_key=api_key,  # type: ignore
-                    base_url=GITHUB_MODELS_URL,
-                    # send raw strings: the client-side token check posts token ids,
-                    # which only api.openai.com accepts
-                    check_embedding_ctx_length=False,
-                    max_retries=6,
-                )
             if provider == "fastembed":
                 # Local ONNX model, no key or network after the first download.
                 # Not in requirements.txt: pip install -r evaluation/requirements.txt
@@ -147,12 +132,11 @@ class ModelLoader:
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
-        if provider in ("openai", "github"):
+        if provider == "openai":
             from langchain_openai import ChatOpenAI
             return ChatOpenAI(
                 model=model_name,
                 api_key=api_key,  # type: ignore
-                base_url=GITHUB_MODELS_URL if provider == "github" else None,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 max_retries=6,

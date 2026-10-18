@@ -2,12 +2,11 @@ faiss_db:
   collection_name: "docuflow"
 
 embedding_model:
-  # openai | google | github | fastembed (local, no key). Override per process with
+  # openai | google | fastembed (local, no key). Override per process with
   # EMBEDDING_PROVIDER. An index must be queried with the embedding model it was built with.
   provider: "openai"
   model_name: "text-embedding-3-small"
   google_model_name: "models/gemini-embedding-001"
-  github_model_name: "openai/text-embedding-3-small"
   local_model_name: "BAAI/bge-small-en-v1.5"
 
 retriever:
@@ -48,12 +47,5 @@ llm:
   openai:
     provider: "openai"
     model_name: "gpt-4o"
-    temperature: 0
-    max_output_tokens: 1000
-
-  # GitHub Models (free tier, rate-limited); used by the evaluation workflow
-  github:
-    provider: "github"
-    model_name: "openai/gpt-4o-mini"
     temperature: 0
     max_output_tokens: 1000

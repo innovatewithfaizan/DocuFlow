@@ -14,9 +14,9 @@ Examples
     # retrieval only, local embeddings, no keys
     python -m evaluation.run_eval --embeddings fastembed --retrieval-only
 
-    # full run on GitHub Models (what .github/workflows/evaluation.yml does)
-    GITHUB_TOKEN=... python -m evaluation.run_eval --embeddings github --llm github \\
-        --judge-provider github --judge-model openai/gpt-4o --min-interval 4.5
+    # full run: production embeddings, gpt-4o answers judged by gpt-4.1 (~US$0.25)
+    OPENAI_API_KEY=... python -m evaluation.run_eval --embeddings openai --llm openai \\
+        --judge-provider openai --judge-model gpt-4.1
 """
 from __future__ import annotations
 
@@ -74,7 +74,7 @@ JUDGE_PROMPT = ChatPromptTemplate.from_messages([
 
 
 class Throttle:
-    """Keeps at least `interval` seconds between remote calls (GitHub Models: 15 req/min)."""
+    """Keeps at least `interval` seconds between remote calls, for rate-limited free tiers."""
 
     def __init__(self, interval: float):
         self.interval, self._last = interval, 0.0
@@ -250,8 +250,8 @@ def write_report(out: Path, report: Dict[str, Any]) -> None:
 def main(argv: Optional[List[str]] = None) -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--qa", type=Path, default=EVAL_DIR / "qa_attention.jsonl")
-    p.add_argument("--embeddings", default="fastembed", help="embedding provider (fastembed|github|openai|google)")
-    p.add_argument("--llm", help="LLM provider key in config.yaml for answers (e.g. github, openai)")
+    p.add_argument("--embeddings", default="fastembed", help="embedding provider (fastembed|openai|google)")
+    p.add_argument("--llm", help="LLM provider key in config.yaml for answers (openai|groq|google)")
     p.add_argument("--judge-provider", help="LLM provider key for the judge (defaults to --llm)")
     p.add_argument("--judge-model", help="model name for the judge (defaults to the provider's model)")
     p.add_argument("--retrieval-only", action="store_true")
@@ -279,7 +279,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     throttle = Throttle(args.min_interval)
     loader = ModelLoader()
     embeddings = CachedEmbeddings(loader.load_embeddings(), throttle,
-                                  batch_queries=args.embeddings in ("github", "openai"))
+                                  batch_queries=args.embeddings == "openai")
     print(f"Indexing with {args.embeddings} embeddings...")
     store, stats = build_index(embeddings, EVAL_DIR / ".cache" / args.embeddings, args.chunk_size, args.chunk_overlap)
     embeddings.prime_queries([r["question"] for r in rows])

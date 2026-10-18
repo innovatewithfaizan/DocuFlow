@@ -80,16 +80,12 @@ def test_unknown_llm_provider_is_rejected(clean_env):
         ModelLoader().load_llm()
 
 
-def test_github_models_provider_uses_the_openai_compatible_endpoint(clean_env):
-    clean_env.setenv("GITHUB_TOKEN", "gh-test")
+def test_model_name_override_for_a_separate_judge(clean_env):
+    clean_env.setenv("OPENAI_API_KEY", "o-test")
 
-    loader = ModelLoader()
-    llm = loader.load_llm("github")
-    judge = loader.load_llm("github", model_name="openai/gpt-4o")
+    judge = ModelLoader().load_llm("openai", model_name="gpt-4.1")
 
-    assert llm.model_name == "openai/gpt-4o-mini"
-    assert judge.model_name == "openai/gpt-4o"
-    assert str(llm.openai_api_base).startswith("https://models.github.ai")
+    assert judge.model_name == "gpt-4.1"
 
 
 def test_fastembed_needs_no_api_key(clean_env):
