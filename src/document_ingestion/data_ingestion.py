@@ -16,6 +16,7 @@ from logger.custom_logger import CustomLogger
 from exception.custom_exception import DocuFlowException
 from utils.file_io import _session_id, save_uploaded_files, validate_session_id
 from utils.document_ops import load_documents, concat_for_analysis, concat_for_comparison
+from src.document_chat.retriever_factory import RetrieverSettings, build_retriever
 
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 
@@ -143,12 +144,16 @@ class ChatIngestor:
         self.log.info("Documents split", chunks=len(chunks), chunk_size=chunk_size, overlap=chunk_overlap)
         return chunks
     
-    def built_retriver( self,
+    def build_retriever( self,
         uploaded_files: Iterable,
         *,
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
-        k: int = 5,):
+        k: Optional[int] = None,
+        search_type: Optional[str] = None,
+        compress: Optional[bool] = None,):
+        """Save, load, chunk and index the files, then return a retriever over the
+        session index. Retrieval settings default to config.yaml's `retriever:` block."""
         try:
             paths = save_uploaded_files(uploaded_files, self.temp_dir)
             docs = load_documents(paths)
@@ -169,7 +174,8 @@ class ChatIngestor:
             self.stats = {"documents": len(docs), "chunks": len(chunks), "added": added}
             self.log.info("FAISS index updated", index=str(self.faiss_dir), **self.stats)
             
-            return vs.as_retriever(search_type="similarity", search_kwargs={"k": k})
+            settings = RetrieverSettings.from_config(k=k, search_type=search_type, compress=compress)
+            return build_retriever(vs, settings, embeddings=fm.emb)
             
         except Exception as e:
             self.log.error("Failed to build retriever", error=str(e))

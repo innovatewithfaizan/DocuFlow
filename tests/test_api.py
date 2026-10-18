@@ -74,3 +74,31 @@ def test_path_traversal_session_ids_are_rejected(client, endpoint):
 def test_query_requires_session_id(client):
     resp = client.post("/chat/query", data={"question": "hi"})
     assert resp.status_code == 400
+
+
+def test_query_returns_sources_and_retrieval_settings(client):
+    session_id = build_index(client)["session_id"]
+
+    body = client.post("/chat/query", data={"question": "When is the first flush harvest?",
+                                            "session_id": session_id, "k": "1",
+                                            "search_type": "similarity"}).json()
+
+    assert body["search_type"] == "similarity"
+    assert body["compressed"] is False
+    assert [s["source"] for s in body["sources"]] == ["tea.txt"]
+
+
+def test_query_defaults_to_mmr(client):
+    session_id = build_index(client)["session_id"]
+
+    body = client.post("/chat/query", data={"question": "tea", "session_id": session_id}).json()
+
+    assert body["search_type"] == "mmr"
+
+
+def test_query_rejects_unknown_search_type(client):
+    session_id = build_index(client)["session_id"]
+
+    resp = client.post("/chat/query", data={"question": "tea", "session_id": session_id, "search_type": "bm25"})
+
+    assert resp.status_code == 400

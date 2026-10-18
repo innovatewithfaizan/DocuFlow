@@ -21,7 +21,7 @@ def indexed_session(workdir, fake_models):
         p.write_text(text, encoding="utf-8")
         paths.append(FakeUpload(p))
     ingestor = ChatIngestor(temp_base="data", faiss_base="faiss_index", session_id="rag")
-    retriever = ingestor.built_retriver(paths, chunk_size=500, chunk_overlap=0, k=1)
+    retriever = ingestor.build_retriever(paths, chunk_size=500, chunk_overlap=0, k=1)
     return ingestor, retriever
 
 
@@ -69,3 +69,37 @@ def test_missing_index_directory_fails_clearly(workdir, fake_models):
     rag = ConversationalRAG(session_id="missing")
     with pytest.raises(DocuFlowException):
         rag.load_retriever_from_faiss(str(workdir / "does-not-exist"))
+
+
+def test_answers_cite_their_sources(indexed_session, fake_llm):
+    ingestor, _ = indexed_session
+    rag = ConversationalRAG(session_id="rag")
+    rag.load_retriever_from_faiss(str(ingestor.faiss_dir), k=1, search_type="similarity")
+
+    result = rag.invoke_with_sources("When is the first flush tea harvest?")
+
+    assert result["sources"] == [{"source": "tea.txt", "page": None, "snippet": TOPICS["tea"][:200]}]
+    assert result["contexts"] == [TOPICS["tea"]]
+
+
+def test_first_question_skips_the_rewrite_call(indexed_session, fake_llm):
+    ingestor, _ = indexed_session
+    rag = ConversationalRAG(session_id="rag")
+    rag.load_retriever_from_faiss(str(ingestor.faiss_dir), k=1)
+
+    rag.invoke("What is the Najdorf?", chat_history=[])
+
+    assert len(fake_llm.prompts) == 1  # only the answer prompt, no rewrite
+
+
+def test_follow_up_questions_are_rewritten_before_retrieval(indexed_session, fake_llm):
+    from langchain_core.messages import AIMessage, HumanMessage
+    ingestor, _ = indexed_session
+    rag = ConversationalRAG(session_id="rag")
+    rag.load_retriever_from_faiss(str(ingestor.faiss_dir), k=1)
+    history = [HumanMessage("Tell me about Darjeeling tea"), AIMessage("It grows in the Himalayan foothills.")]
+
+    result = rag.invoke_with_sources("When is the first flush harvest?", chat_history=history)
+
+    assert len(fake_llm.prompts) == 2  # rewrite + answer
+    assert result["sources"][0]["source"] == "tea.txt"
