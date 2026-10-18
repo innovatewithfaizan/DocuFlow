@@ -1,9 +1,11 @@
-name: CI/CD to ECS Fargate
+name: Deploy to ECS Fargate
+
+# Manual only: deploying creates billable AWS resources, so it is never a side
+# effect of merging. Run it from the Actions tab (or `gh workflow run aws.yaml`)
+# once the AWS secrets below are configured.
 on:
-  workflow_run:
-    workflows: ["Run Unit Tests"]   # Match the name in your ci.yaml
-    types:
-      - completed
+  workflow_dispatch:
+
 env:
   AWS_REGION: ap-southeast-2
   ECR_REPOSITORY: documentportalliveclass
@@ -13,23 +15,47 @@ env:
   CONTAINER_NAME: document-portal-container
 
 permissions:
-  id-token: write
   contents: read
 
-jobs:
-  check-status:
-    runs-on: ubuntu-latest
-    if: ${{github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'}}
-    steps:
-      - name: CI passed on main branch
-        run: echo "CI passed on main branch, proceeding to build and deploy."
+concurrency:
+  group: deploy-ecs
+  cancel-in-progress: false
 
-  # -------------------------------
-  # 1. Build & Push Docker Image
-  # -------------------------------
+jobs:
+  preflight:
+    name: Preflight checks
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Require AWS credentials
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          missing=()
+          [ -n "$AWS_ACCESS_KEY_ID" ] || missing+=(AWS_ACCESS_KEY_ID)
+          [ -n "$AWS_SECRET_ACCESS_KEY" ] || missing+=(AWS_SECRET_ACCESS_KEY)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing repository secrets: ${missing[*]}. Add them under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+  tests:
+    name: Unit tests
+    needs: preflight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -q
+
   build-and-push:
     name: Build & Push Docker Image
-    needs: [check-status]
+    needs: tests
     runs-on: ubuntu-latest
     outputs:
       image: ${{ steps.build-image.outputs.image }}
@@ -55,14 +81,10 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-          docker build -t $IMAGE_URI .
-          docker push $IMAGE_URI
-          echo "image=$IMAGE_URI" >> $GITHUB_OUTPUT
+          docker build -t "$IMAGE_URI" .
+          docker push "$IMAGE_URI"
+          echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
 
-  # -------------------------------
-  # 2. Deploy to ECS
-  # -------------------------------
   deploy:
     name: Deploy to ECS Fargate
     needs: build-and-push
@@ -72,7 +94,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -85,8 +107,7 @@ jobs:
           task-definition: ${{ env.ECS_TASK_DEFINITION }}
           container-name: ${{ env.CONTAINER_NAME }}
           image: ${{ needs.build-and-push.outputs.image }}
-      - name: Print Rendered Task
-        run: cat ${{ steps.render-task.outputs.task-definition }}
+
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
@@ -94,5 +115,3 @@ jobs:
           service: ${{ env.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
-      - name: Done!
-        run: echo "Deployed to ECS Fargate Successfully"
