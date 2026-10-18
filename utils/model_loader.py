@@ -9,7 +9,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from langchain.chat_models import ChatOpenAI
 from logger.custom_logger import CustomLogger
-from exception.custom_exception import DocumentPortalException
+from exception.custom_exception import DocuFlowException
 log = CustomLogger().get_logger(__name__)
 
 
@@ -59,7 +59,7 @@ class ModelLoader:
         missing = [k for k, v in self.api_keys.items() if not v]
         if missing:
             log.error("Missing environment variables", missing_vars=missing)
-            raise DocumentPortalException("Missing environment variables", sys)
+            raise DocuFlowException("Missing environment variables", sys)
         log.info("Environment variables validated", available_keys=[k for k in self.api_keys if self.api_keys[k]])
         
     def load_embeddings(self):
@@ -72,7 +72,7 @@ class ModelLoader:
             return OpenAIEmbeddings(model=model_name)
         except Exception as e:
             log.error("Error loading embedding model", error=str(e))
-            raise DocumentPortalException("Failed to load embedding model", sys)
+            raise DocuFlowException("Failed to load embedding model", sys)
         
     def load_llm(self):
         """

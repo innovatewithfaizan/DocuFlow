@@ -9,7 +9,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.vectorstores import FAISS
 
 from utils.model_loader import ModelLoader
-from exception.custom_exception import DocumentPortalException
+from exception.custom_exception import DocuFlowException
 from logger.custom_logger import CustomLogger
 log = CustomLogger().get_logger(__name__)
 from prompt.prompt_library import PROMPT_REGISTRY
@@ -48,7 +48,7 @@ class ConversationalRAG:
             log.info("ConversationalRAG initialized", session_id=self.session_id)
         except Exception as e:
             log.error("Failed to initialize ConversationalRAG", error=str(e))
-            raise DocumentPortalException("Initialization error in ConversationalRAG", sys)
+            raise DocuFlowException("Initialization error in ConversationalRAG", sys)
 
     # ---------- Public API ----------
 
@@ -94,13 +94,13 @@ class ConversationalRAG:
 
         except Exception as e:
             log.error("Failed to load retriever from FAISS", error=str(e))
-            raise DocumentPortalException("Loading error in ConversationalRAG", sys)
+            raise DocuFlowException("Loading error in ConversationalRAG", sys)
 
     def invoke(self, user_input: str, chat_history: Optional[List[BaseMessage]] = None) -> str:
         """Invoke the LCEL pipeline."""
         try:
             if self.chain is None:
-                raise DocumentPortalException(
+                raise DocuFlowException(
                     "RAG chain not initialized. Call load_retriever_from_faiss() before invoke().", sys
                 )
             chat_history = chat_history or []
@@ -120,7 +120,7 @@ class ConversationalRAG:
             return answer
         except Exception as e:
             log.error("Failed to invoke ConversationalRAG", error=str(e))
-            raise DocumentPortalException("Invocation error in ConversationalRAG", sys)
+            raise DocuFlowException("Invocation error in ConversationalRAG", sys)
 
     # ---------- Internals ----------
 
@@ -133,7 +133,7 @@ class ConversationalRAG:
             return llm
         except Exception as e:
             log.error("Failed to load LLM", error=str(e))
-            raise DocumentPortalException("LLM loading error in ConversationalRAG", sys)
+            raise DocuFlowException("LLM loading error in ConversationalRAG", sys)
 
     @staticmethod
     def _format_docs(docs) -> str:
@@ -142,7 +142,7 @@ class ConversationalRAG:
     def _build_lcel_chain(self):
         try:
             if self.retriever is None:
-                raise DocumentPortalException("No retriever set before building chain", sys)
+                raise DocuFlowException("No retriever set before building chain", sys)
 
             # 1) Rewrite user question with chat history context
             question_rewriter = (
@@ -170,4 +170,4 @@ class ConversationalRAG:
             log.info("LCEL graph built successfully", session_id=self.session_id)
         except Exception as e:
             log.error("Failed to build LCEL chain", error=str(e), session_id=self.session_id)
-            raise DocumentPortalException("Failed to build LCEL chain", sys)
+            raise DocuFlowException("Failed to build LCEL chain", sys)

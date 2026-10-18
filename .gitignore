@@ -1,9 +1,22 @@
-llmops
-.env
-document_portal.egg-info
-venv/
+# Python
 __pycache__/
-logs/
-*.pyc
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+llmops/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Runtime data (uploads, indexes, logs) - never commit user documents
+/data/
+api/data/
 faiss_index/
-archive
+logs/
+
+archive/
+.DS_Store

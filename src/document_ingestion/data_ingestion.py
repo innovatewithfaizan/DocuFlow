@@ -13,7 +13,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from utils.model_loader import ModelLoader
 from logger.custom_logger import CustomLogger
-from exception.custom_exception import DocumentPortalException
+from exception.custom_exception import DocuFlowException
 from utils.file_io import _session_id, save_uploaded_files
 from utils.document_ops import load_documents, concat_for_analysis, concat_for_comparison
 
@@ -80,7 +80,7 @@ class FaissManager:
             return self.vs
         
         if not texts:
-            raise DocumentPortalException("no existing FAISS index and no data to create one", sys)
+            raise DocuFlowException("no existing FAISS index and no data to create one", sys)
         self.vs = FAISS.from_texts(texts=texts, embedding=self.emb, metadatas=metadatas or [])
         self.vs.save_local(str(self.index_dir))
         return self.vs
@@ -113,7 +113,7 @@ class ChatIngestor:
         
         except Exception as e:
             self.log.error("Failed to initialize ChatIngestor", error=str(e))
-            raise DocumentPortalException("Initialization error in ChatIngestor", e) from e
+            raise DocuFlowException("Initialization error in ChatIngestor", e) from e
 
     def _resolve_dir(self, base: Path):
         if self.use_session:
@@ -160,7 +160,7 @@ class ChatIngestor:
             
         except Exception as e:
             self.log.error("Failed to build retriever", error=str(e))
-            raise DocumentPortalException("Failed to build retriever", e) from e
+            raise DocuFlowException("Failed to build retriever", e) from e
 
             
         
@@ -190,7 +190,7 @@ class DocHandler:
             return save_path
         except Exception as e:
             self.log.error("failed to save PDF", error=str(e), session_id=self.session_id)
-            raise DocumentPortalException(f"Failed to save PDF: {str(e)}", e) from e
+            raise DocuFlowException(f"Failed to save PDF: {str(e)}", e) from e
     
     
     
@@ -206,7 +206,7 @@ class DocHandler:
                     return text
         except Exception as e:
             self.log.error("Failed to read PDF", error=str(e), pdf_path=pdf_path, session_id=self.session_id, pages=len(text_chunks))
-            raise DocumentPortalException(f"Could not process PDF: {pdf_path}", e) from e
+            raise DocuFlowException(f"Could not process PDF: {pdf_path}", e) from e
         
 
 class DocumentComparator:
@@ -236,7 +236,7 @@ class DocumentComparator:
         
         except Exception as e:
             self.log.error("Error saving PDF files", error=str(e), session_id=self.session_id)
-            raise DocumentPortalException("Error saving files", e) from e
+            raise DocuFlowException("Error saving files", e) from e
 
     def read_pdf(self, pdf_path: Path)-> str:
         try:
@@ -253,7 +253,7 @@ class DocumentComparator:
             return "/n".join(parts)
         except Exception as e:
             self.log.error("Error reading PDF", file=str(pdf_path), error = str(e))
-            raise DocumentPortalException("Errror readind PDF", e) from e       
+            raise DocuFlowException("Errror readind PDF", e) from e       
 
     def combine_documents(self)-> str:
         try:
@@ -267,7 +267,7 @@ class DocumentComparator:
             return combined_text
         except Exception as e:
             self.log.error("Error combining documents", error = str(e), session_id=self.session_id)
-            raise DocumentPortalException("Error combining documents", e) from e
+            raise DocuFlowException("Error combining documents", e) from e
 
     def clean_old_sessions(self, keep_latest: int = 3):
         try:
@@ -277,7 +277,7 @@ class DocumentComparator:
                 self.log.info("Old session folder deleted", path=str(folder))
         except Exception as e:
             self.log.error("Error cleaning old sessions", error=str(e))
-            raise DocumentPortalException("Error cleaning old sessions", e) from e
+            raise DocuFlowException("Error cleaning old sessions", e) from e
 
 
     
