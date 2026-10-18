@@ -19,7 +19,7 @@ from utils.document_ops import FastAPIFileAdapter, read_pdf_via_handler
 FAISS_BASE = os.getenv("FAISS_BASE", "faiss_index")
 UPLOAD_BASE = os.getenv("UPLOADED_BASE", "data")
 
-app = FastAPI(title="Document Portal API", version="0.1")
+app = FastAPI(title="DocuFlow API", version="0.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,7 +41,7 @@ async def service_ui(request: Request):
 
 @app.get("/health")
 def health() -> Dict[str, str]:
-    return {"status": "ok", "service": "document-portal"}
+    return {"status": "ok", "service": "docuflow"}
 
 @app.post("/analyze")
 async def analyze_document(file: UploadFile = File(...)) -> Any:
