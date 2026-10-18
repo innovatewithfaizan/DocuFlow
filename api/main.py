@@ -15,6 +15,7 @@ from src.document_analyzer.data_analysis import DocumentAnalyzer
 from src.document_compare.document_comparator import DocumentComparatorLLM
 from src.document_chat.retrieval import ConversationalRAG
 from utils.document_ops import FastAPIFileAdapter, read_pdf_via_handler
+from utils.file_io import validate_session_id
 
 FAISS_BASE = os.getenv("FAISS_BASE", "faiss_index")
 UPLOAD_BASE = os.getenv("UPLOADED_BASE", "data")
@@ -33,9 +34,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
+def _check_session_id(session_id: str) -> None:
+    try:
+        validate_session_id(session_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @app.get("/", response_class=HTMLResponse)
 async def service_ui(request: Request):
-    resp = templates.TemplateResponse("index.html", {"request": request})
+    resp = templates.TemplateResponse(request, "index.html")
     resp.headers["Cache-Control"] = "no-store"
     return resp
 
@@ -88,6 +95,8 @@ async def chat_build_index(
     k: int = Form(5),
 ) -> Any:
     try:
+        if session_id:
+            _check_session_id(session_id)
         wrapped = [FastAPIFileAdapter(f) for f in files]
         ci = ChatIngestor(
             temp_base=UPLOAD_BASE,
@@ -96,7 +105,7 @@ async def chat_build_index(
             session_id=session_id or None,
         )
         ci.built_retriver(wrapped, chunk_size=chunk_size, chunk_overlap=chunk_overlap, k=k)
-        return {"session_id": ci.session_id, "k": k, "use_session_dirs": use_session_dirs}
+        return {"session_id": ci.session_id, "k": k, "use_session_dirs": use_session_dirs, **ci.stats}
     except HTTPException:
         raise
     except Exception as e:
@@ -112,6 +121,8 @@ async def chat_query(
     try:
         if use_session_dirs and not session_id:
             raise HTTPException(status_code=400, detail="session_id is required when use_session_dirs=True")
+        if use_session_dirs:
+            _check_session_id(session_id)  # type: ignore[arg-type]
 
         # Prepare FAISS index path
         index_dir = os.path.join(FAISS_BASE, session_id) if use_session_dirs else FAISS_BASE  # type: ignore
@@ -120,7 +131,7 @@ async def chat_query(
 
         # Initialize LCEL-style RAG pipeline
         rag = ConversationalRAG(session_id=session_id) #type: ignore
-        rag.load_retriever_from_faiss(index_dir)
+        rag.load_retriever_from_faiss(index_dir, k=k)
 
         # Optional: For now we pass empty chat history
         response = rag.invoke(question, chat_history=[])
