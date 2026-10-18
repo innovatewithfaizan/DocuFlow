@@ -34,6 +34,20 @@ jobs:
       - name: Retrieval, local embeddings (bge-small, no API)
         run: python -m evaluation.run_eval --embeddings fastembed --retrieval-only
 
+      - name: Check GitHub Models access
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          probe() {
+            code=$(curl -sS -o body.json -w "%{http_code} %{content_type}" -X POST \
+              "https://models.github.ai/inference/$1" \
+              -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" -d "$2")
+            echo "$1 -> $code"; head -c 300 body.json; echo
+            case "$code" in 200\ application/json*) ;; *) return 1 ;; esac
+          }
+          probe embeddings '{"model":"openai/text-embedding-3-small","input":["probe"]}'
+          probe chat/completions '{"model":"openai/gpt-4o-mini","messages":[{"role":"user","content":"Reply OK"}],"max_tokens":3}'
+
       - name: Retrieval and answers, GitHub Models
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
