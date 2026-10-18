@@ -9,7 +9,21 @@ embedding_model:
   google_model_name: "models/gemini-embedding-001"
 
 retriever:
-  top_k: 10
+  # similarity | mmr (can be overridden per request on /chat/query)
+  search_type: "mmr"
+  top_k: 5
+  # MMR fetches fetch_k candidates by similarity, then picks top_k that are
+  # relevant but not redundant. lambda_mult: 1.0 = pure relevance, 0.0 = max diversity.
+  fetch_k: 20
+  lambda_mult: 0.5
+  compression:
+    # Split retrieved chunks into ~piece_size-character pieces, drop near-duplicate
+    # pieces and keep the keep_top_n most similar to the question. Costs one extra
+    # embedding call per query (the retrieved chunks are re-embedded).
+    enabled: false
+    piece_size: 400
+    keep_top_n: 8
+    redundancy_threshold: 0.95
 
 # Used when LLM_PROVIDER is not set
 default_llm: "openai"

@@ -27,7 +27,7 @@ def ingestor(workdir, fake_models):
 def test_fresh_index_has_no_duplicate_chunks(ingestor, workdir):
     # Regression: a new index stored every chunk twice
     doc = write_doc(workdir / "a.txt", PARAGRAPHS)
-    ingestor.built_retriver([FakeUpload(doc)], chunk_size=80, chunk_overlap=0)
+    ingestor.build_retriever([FakeUpload(doc)], chunk_size=80, chunk_overlap=0)
 
     assert ingestor.stats["chunks"] > 1
     assert index_size(ingestor) == ingestor.stats["chunks"] == ingestor.stats["added"]
@@ -35,10 +35,10 @@ def test_fresh_index_has_no_duplicate_chunks(ingestor, workdir):
 
 def test_reuploading_the_same_document_adds_nothing(ingestor, workdir):
     doc = write_doc(workdir / "a.txt", PARAGRAPHS)
-    ingestor.built_retriver([FakeUpload(doc)], chunk_size=80, chunk_overlap=0)
+    ingestor.build_retriever([FakeUpload(doc)], chunk_size=80, chunk_overlap=0)
     first = index_size(ingestor)
 
-    ingestor.built_retriver([FakeUpload(doc)], chunk_size=80, chunk_overlap=0)
+    ingestor.build_retriever([FakeUpload(doc)], chunk_size=80, chunk_overlap=0)
 
     assert ingestor.stats["added"] == 0
     assert index_size(ingestor) == first
@@ -49,10 +49,10 @@ def test_adding_a_second_file_indexes_all_of_its_chunks(ingestor, workdir):
     # existing session contributed just its first chunk
     first = write_doc(workdir / "a.txt", PARAGRAPHS[:3])
     second = write_doc(workdir / "b.txt", PARAGRAPHS[3:])
-    ingestor.built_retriver([FakeUpload(first)], chunk_size=80, chunk_overlap=0)
+    ingestor.build_retriever([FakeUpload(first)], chunk_size=80, chunk_overlap=0)
     before = index_size(ingestor)
 
-    ingestor.built_retriver([FakeUpload(second)], chunk_size=80, chunk_overlap=0)
+    ingestor.build_retriever([FakeUpload(second)], chunk_size=80, chunk_overlap=0)
 
     assert ingestor.stats["added"] == ingestor.stats["chunks"] > 1
     assert index_size(ingestor) == before + ingestor.stats["chunks"]
@@ -63,7 +63,7 @@ def test_sessions_are_isolated(workdir, fake_models):
     one = ChatIngestor(temp_base="data", faiss_base="faiss_index", session_id="one")
     two = ChatIngestor(temp_base="data", faiss_base="faiss_index", session_id="two")
 
-    one.built_retriver([FakeUpload(doc)], chunk_size=80, chunk_overlap=0)
+    one.build_retriever([FakeUpload(doc)], chunk_size=80, chunk_overlap=0)
 
     assert (workdir / "faiss_index" / "one" / "index.faiss").exists()
     assert not (workdir / "faiss_index" / "two" / "index.faiss").exists()
