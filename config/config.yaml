@@ -11,8 +11,10 @@ embedding_model:
   local_model_name: "BAAI/bge-small-en-v1.5"
 
 retriever:
-  # similarity | mmr (can be overridden per request on /chat/query)
-  search_type: "mmr"
+  # similarity | mmr (can be overridden per request on /chat/query).
+  # similarity is the default because it retrieved the evidence more often than MMR
+  # on single-fact questions (evaluation/results/); MMR suits broad, multi-part questions.
+  search_type: "similarity"
   top_k: 5
   # MMR fetches fetch_k candidates by similarity, then picks top_k that are
   # relevant but not redundant. lambda_mult: 1.0 = pure relevance, 0.0 = max diversity.

@@ -38,7 +38,7 @@ class CompressionSettings:
 
 @dataclass(frozen=True)
 class RetrieverSettings:
-    search_type: str = "mmr"
+    search_type: str = "similarity"
     k: int = 5
     fetch_k: int = 20
     lambda_mult: float = 0.5

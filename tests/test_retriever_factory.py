@@ -23,7 +23,7 @@ def store():
 
 def test_settings_default_to_config():
     s = RetrieverSettings.from_config()
-    assert s.search_type == "mmr"
+    assert s.search_type == "similarity"
     assert (s.k, s.fetch_k, s.lambda_mult) == (5, 20, 0.5)
     assert s.compression.enabled is False
 
@@ -31,7 +31,7 @@ def test_settings_default_to_config():
 def test_settings_overrides_ignore_none():
     s = RetrieverSettings.from_config(k=3, search_type=None, compress=True)
     assert s.k == 3
-    assert s.search_type == "mmr"
+    assert s.search_type == "similarity"
     assert s.compression.enabled is True
 
 

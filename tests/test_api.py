@@ -88,12 +88,12 @@ def test_query_returns_sources_and_retrieval_settings(client):
     assert [s["source"] for s in body["sources"]] == ["tea.txt"]
 
 
-def test_query_defaults_to_mmr(client):
+def test_query_uses_the_configured_search_type_by_default(client):
     session_id = build_index(client)["session_id"]
 
     body = client.post("/chat/query", data={"question": "tea", "session_id": session_id}).json()
 
-    assert body["search_type"] == "mmr"
+    assert body["search_type"] == "similarity"
 
 
 def test_query_rejects_unknown_search_type(client):
