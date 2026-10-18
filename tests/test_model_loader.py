@@ -78,3 +78,15 @@ def test_unknown_llm_provider_is_rejected(clean_env):
 
     with pytest.raises(ValueError):
         ModelLoader().load_llm()
+
+
+def test_model_name_override_for_a_separate_judge(clean_env):
+    clean_env.setenv("OPENAI_API_KEY", "o-test")
+
+    judge = ModelLoader().load_llm("openai", model_name="gpt-4.1")
+
+    assert judge.model_name == "gpt-4.1"
+
+
+def test_fastembed_needs_no_api_key(clean_env):
+    assert ModelLoader._require_key("fastembed") is None

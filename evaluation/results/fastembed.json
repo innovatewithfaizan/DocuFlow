@@ -1,0 +1,607 @@
+{
+  "run_at": "2026-10-18 20:43 UTC",
+  "dataset": {
+    "document": "Attention Is All You Need (arXiv:1706.03762v7)",
+    "pdf_sha256": "bdfaa68d8984f0dc02beaca527b76f207d99b666d31d1da728ee0728182df697",
+    "qa_file": "qa_attention.jsonl",
+    "questions": 25
+  },
+  "index": {
+    "chunk_size": 1000,
+    "chunk_overlap": 200,
+    "documents": 15,
+    "chunks": 52,
+    "added": 52,
+    "answerable_questions": 25
+  },
+  "models": {
+    "embeddings": "fastembed:BAAI/bge-small-en-v1.5"
+  },
+  "retrieval": {
+    "similarity": {
+      "settings": {
+        "search_type": "similarity",
+        "k": 5,
+        "fetch_k": 20,
+        "lambda_mult": 0.5,
+        "compression": null
+      },
+      "summary": {
+        "questions": 25,
+        "hits": 22,
+        "hit_rate": 0.88,
+        "mrr": 0.76,
+        "mean_context_chars": 4492
+      },
+      "per_question": [
+        {
+          "id": "q01",
+          "rank": 1,
+          "context_chars": 4630
+        },
+        {
+          "id": "q02",
+          "rank": 1,
+          "context_chars": 4687
+        },
+        {
+          "id": "q03",
+          "rank": 2,
+          "context_chars": 4682
+        },
+        {
+          "id": "q04",
+          "rank": 1,
+          "context_chars": 4700
+        },
+        {
+          "id": "q05",
+          "rank": 1,
+          "context_chars": 4627
+        },
+        {
+          "id": "q06",
+          "rank": 4,
+          "context_chars": 4730
+        },
+        {
+          "id": "q07",
+          "rank": 4,
+          "context_chars": 4730
+        },
+        {
+          "id": "q08",
+          "rank": 2,
+          "context_chars": 4541
+        },
+        {
+          "id": "q09",
+          "rank": 1,
+          "context_chars": 4724
+        },
+        {
+          "id": "q10",
+          "rank": 1,
+          "context_chars": 4535
+        },
+        {
+          "id": "q11",
+          "rank": 1,
+          "context_chars": 4094
+        },
+        {
+          "id": "q12",
+          "rank": 1,
+          "context_chars": 4072
+        },
+        {
+          "id": "q13",
+          "rank": 1,
+          "context_chars": 4431
+        },
+        {
+          "id": "q14",
+          "rank": 1,
+          "context_chars": 4216
+        },
+        {
+          "id": "q15",
+          "rank": 1,
+          "context_chars": 4744
+        },
+        {
+          "id": "q16",
+          "rank": 1,
+          "context_chars": 4800
+        },
+        {
+          "id": "q17",
+          "rank": 1,
+          "context_chars": 4615
+        },
+        {
+          "id": "q18",
+          "rank": 1,
+          "context_chars": 4160
+        },
+        {
+          "id": "q19",
+          "rank": 1,
+          "context_chars": 4444
+        },
+        {
+          "id": "q20",
+          "rank": 1,
+          "context_chars": 4354
+        },
+        {
+          "id": "q21",
+          "rank": null,
+          "context_chars": 3724
+        },
+        {
+          "id": "q22",
+          "rank": null,
+          "context_chars": 4488
+        },
+        {
+          "id": "q23",
+          "rank": 2,
+          "context_chars": 4739
+        },
+        {
+          "id": "q24",
+          "rank": 1,
+          "context_chars": 4734
+        },
+        {
+          "id": "q25",
+          "rank": null,
+          "context_chars": 4111
+        }
+      ]
+    },
+    "mmr": {
+      "settings": {
+        "search_type": "mmr",
+        "k": 5,
+        "fetch_k": 20,
+        "lambda_mult": 0.5,
+        "compression": null
+      },
+      "summary": {
+        "questions": 25,
+        "hits": 19,
+        "hit_rate": 0.76,
+        "mrr": 0.708,
+        "mean_context_chars": 4411
+      },
+      "per_question": [
+        {
+          "id": "q01",
+          "rank": 1,
+          "context_chars": 4756
+        },
+        {
+          "id": "q02",
+          "rank": 1,
+          "context_chars": 4693
+        },
+        {
+          "id": "q03",
+          "rank": 5,
+          "context_chars": 4781
+        },
+        {
+          "id": "q04",
+          "rank": 1,
+          "context_chars": 4634
+        },
+        {
+          "id": "q05",
+          "rank": 1,
+          "context_chars": 4620
+        },
+        {
+          "id": "q06",
+          "rank": null,
+          "context_chars": 4733
+        },
+        {
+          "id": "q07",
+          "rank": null,
+          "context_chars": 4733
+        },
+        {
+          "id": "q08",
+          "rank": 2,
+          "context_chars": 4043
+        },
+        {
+          "id": "q09",
+          "rank": 1,
+          "context_chars": 4659
+        },
+        {
+          "id": "q10",
+          "rank": 1,
+          "context_chars": 4831
+        },
+        {
+          "id": "q11",
+          "rank": 1,
+          "context_chars": 4012
+        },
+        {
+          "id": "q12",
+          "rank": 1,
+          "context_chars": 4310
+        },
+        {
+          "id": "q13",
+          "rank": 1,
+          "context_chars": 4628
+        },
+        {
+          "id": "q14",
+          "rank": 1,
+          "context_chars": 4424
+        },
+        {
+          "id": "q15",
+          "rank": 1,
+          "context_chars": 3947
+        },
+        {
+          "id": "q16",
+          "rank": 1,
+          "context_chars": 4670
+        },
+        {
+          "id": "q17",
+          "rank": 1,
+          "context_chars": 4123
+        },
+        {
+          "id": "q18",
+          "rank": 1,
+          "context_chars": 4379
+        },
+        {
+          "id": "q19",
+          "rank": 1,
+          "context_chars": 4563
+        },
+        {
+          "id": "q20",
+          "rank": 1,
+          "context_chars": 4190
+        },
+        {
+          "id": "q21",
+          "rank": null,
+          "context_chars": 3673
+        },
+        {
+          "id": "q22",
+          "rank": null,
+          "context_chars": 4192
+        },
+        {
+          "id": "q23",
+          "rank": null,
+          "context_chars": 4444
+        },
+        {
+          "id": "q24",
+          "rank": 1,
+          "context_chars": 4162
+        },
+        {
+          "id": "q25",
+          "rank": null,
+          "context_chars": 4073
+        }
+      ]
+    },
+    "similarity+compression": {
+      "settings": {
+        "search_type": "similarity",
+        "k": 5,
+        "fetch_k": 20,
+        "lambda_mult": 0.5,
+        "compression": {
+          "enabled": true,
+          "piece_size": 400,
+          "keep_top_n": 8,
+          "redundancy_threshold": 0.95
+        }
+      },
+      "summary": {
+        "questions": 25,
+        "hits": 21,
+        "hit_rate": 0.84,
+        "mrr": 0.7,
+        "mean_context_chars": 2604
+      },
+      "per_question": [
+        {
+          "id": "q01",
+          "rank": 1,
+          "context_chars": 2694
+        },
+        {
+          "id": "q02",
+          "rank": 1,
+          "context_chars": 2416
+        },
+        {
+          "id": "q03",
+          "rank": 4,
+          "context_chars": 2735
+        },
+        {
+          "id": "q04",
+          "rank": 4,
+          "context_chars": 2757
+        },
+        {
+          "id": "q05",
+          "rank": 1,
+          "context_chars": 2582
+        },
+        {
+          "id": "q06",
+          "rank": null,
+          "context_chars": 2559
+        },
+        {
+          "id": "q07",
+          "rank": 3,
+          "context_chars": 2569
+        },
+        {
+          "id": "q08",
+          "rank": 1,
+          "context_chars": 2757
+        },
+        {
+          "id": "q09",
+          "rank": 1,
+          "context_chars": 2800
+        },
+        {
+          "id": "q10",
+          "rank": 1,
+          "context_chars": 2641
+        },
+        {
+          "id": "q11",
+          "rank": 1,
+          "context_chars": 2463
+        },
+        {
+          "id": "q12",
+          "rank": 1,
+          "context_chars": 2524
+        },
+        {
+          "id": "q13",
+          "rank": 1,
+          "context_chars": 2397
+        },
+        {
+          "id": "q14",
+          "rank": 1,
+          "context_chars": 2458
+        },
+        {
+          "id": "q15",
+          "rank": 1,
+          "context_chars": 2548
+        },
+        {
+          "id": "q16",
+          "rank": 1,
+          "context_chars": 2632
+        },
+        {
+          "id": "q17",
+          "rank": 2,
+          "context_chars": 2714
+        },
+        {
+          "id": "q18",
+          "rank": 1,
+          "context_chars": 2479
+        },
+        {
+          "id": "q19",
+          "rank": 1,
+          "context_chars": 2726
+        },
+        {
+          "id": "q20",
+          "rank": 1,
+          "context_chars": 2733
+        },
+        {
+          "id": "q21",
+          "rank": null,
+          "context_chars": 2547
+        },
+        {
+          "id": "q22",
+          "rank": null,
+          "context_chars": 2693
+        },
+        {
+          "id": "q23",
+          "rank": 1,
+          "context_chars": 2400
+        },
+        {
+          "id": "q24",
+          "rank": 6,
+          "context_chars": 2657
+        },
+        {
+          "id": "q25",
+          "rank": null,
+          "context_chars": 2607
+        }
+      ]
+    },
+    "mmr+compression": {
+      "settings": {
+        "search_type": "mmr",
+        "k": 5,
+        "fetch_k": 20,
+        "lambda_mult": 0.5,
+        "compression": {
+          "enabled": true,
+          "piece_size": 400,
+          "keep_top_n": 8,
+          "redundancy_threshold": 0.95
+        }
+      },
+      "summary": {
+        "questions": 25,
+        "hits": 19,
+        "hit_rate": 0.76,
+        "mrr": 0.68,
+        "mean_context_chars": 2606
+      },
+      "per_question": [
+        {
+          "id": "q01",
+          "rank": 1,
+          "context_chars": 2815
+        },
+        {
+          "id": "q02",
+          "rank": 1,
+          "context_chars": 2615
+        },
+        {
+          "id": "q03",
+          "rank": 2,
+          "context_chars": 2516
+        },
+        {
+          "id": "q04",
+          "rank": 4,
+          "context_chars": 2754
+        },
+        {
+          "id": "q05",
+          "rank": 1,
+          "context_chars": 2577
+        },
+        {
+          "id": "q06",
+          "rank": null,
+          "context_chars": 2753
+        },
+        {
+          "id": "q07",
+          "rank": null,
+          "context_chars": 2753
+        },
+        {
+          "id": "q08",
+          "rank": 1,
+          "context_chars": 2660
+        },
+        {
+          "id": "q09",
+          "rank": 1,
+          "context_chars": 2756
+        },
+        {
+          "id": "q10",
+          "rank": 1,
+          "context_chars": 2651
+        },
+        {
+          "id": "q11",
+          "rank": 1,
+          "context_chars": 2462
+        },
+        {
+          "id": "q12",
+          "rank": 1,
+          "context_chars": 2678
+        },
+        {
+          "id": "q13",
+          "rank": 1,
+          "context_chars": 2537
+        },
+        {
+          "id": "q14",
+          "rank": 1,
+          "context_chars": 2682
+        },
+        {
+          "id": "q15",
+          "rank": 1,
+          "context_chars": 2593
+        },
+        {
+          "id": "q16",
+          "rank": 1,
+          "context_chars": 2632
+        },
+        {
+          "id": "q17",
+          "rank": 1,
+          "context_chars": 2702
+        },
+        {
+          "id": "q18",
+          "rank": 1,
+          "context_chars": 2650
+        },
+        {
+          "id": "q19",
+          "rank": 1,
+          "context_chars": 2257
+        },
+        {
+          "id": "q20",
+          "rank": 1,
+          "context_chars": 2571
+        },
+        {
+          "id": "q21",
+          "rank": null,
+          "context_chars": 2599
+        },
+        {
+          "id": "q22",
+          "rank": null,
+          "context_chars": 2423
+        },
+        {
+          "id": "q23",
+          "rank": null,
+          "context_chars": 2622
+        },
+        {
+          "id": "q24",
+          "rank": 4,
+          "context_chars": 2240
+        },
+        {
+          "id": "q25",
+          "rank": null,
+          "context_chars": 2640
+        }
+      ]
+    }
+  },
+  "api_calls": {
+    "embedding_requests": 45
+  }
+}

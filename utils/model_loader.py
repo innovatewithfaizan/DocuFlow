@@ -8,11 +8,12 @@ from logger.custom_logger import CustomLogger
 from exception.custom_exception import DocuFlowException
 log = CustomLogger().get_logger(__name__)
 
-# The API key each provider needs.
+# The API key each provider needs. "fastembed" runs locally and needs none.
 PROVIDER_KEYS = {
     "openai": "OPENAI_API_KEY",
     "groq": "GROQ_API_KEY",
     "google": "GOOGLE_API_KEY",
+    "fastembed": None,
 }
 
 
@@ -58,10 +59,12 @@ class ModelLoader:
         log.info("Configuration loaded successfully", config_keys=list(self.config.keys()))
 
     @staticmethod
-    def _require_key(provider: str) -> str:
+    def _require_key(provider: str) -> Optional[str]:
         if provider not in PROVIDER_KEYS:
             raise ValueError(f"Unsupported provider: {provider}")
         env_var = PROVIDER_KEYS[provider]
+        if env_var is None:
+            return None
         value = os.getenv(env_var)
         if not value:
             log.error("Missing environment variable", missing_var=env_var, provider=provider)
@@ -83,13 +86,19 @@ class ModelLoader:
             if provider == "google":
                 from langchain_google_genai import GoogleGenerativeAIEmbeddings
                 return GoogleGenerativeAIEmbeddings(model=emb_cfg["google_model_name"], google_api_key=api_key)  # type: ignore
+            if provider == "fastembed":
+                # Local ONNX model, no key or network after the first download.
+                # Not in requirements.txt: pip install -r evaluation/requirements.txt
+                from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+                return FastEmbedEmbeddings(model_name=emb_cfg["local_model_name"])
             raise ValueError(f"Unsupported embedding provider: {provider}")
         except Exception as e:
             log.error("Error loading embedding model", error=str(e))
             raise DocuFlowException("Failed to load embedding model", e) from e
 
-    def load_llm(self, provider_key: Optional[str] = None):
-        """Load the LLM for `provider_key` (defaults to LLM_PROVIDER, then config default_llm)."""
+    def load_llm(self, provider_key: Optional[str] = None, model_name: Optional[str] = None):
+        """Load the LLM for `provider_key` (defaults to LLM_PROVIDER, then config default_llm).
+        `model_name` overrides the configured model, e.g. to use a different judge model."""
         llm_block = self.config["llm"]
         provider_key = provider_key or self.llm_provider
 
@@ -100,7 +109,7 @@ class ModelLoader:
 
         llm_config = llm_block[provider_key]
         provider = llm_config.get("provider")
-        model_name = llm_config.get("model_name")
+        model_name = model_name or llm_config.get("model_name")
         temperature = llm_config.get("temperature", 0)
         max_tokens = llm_config.get("max_output_tokens", 2048)
         api_key = self._require_key(provider)
@@ -130,6 +139,7 @@ class ModelLoader:
                 api_key=api_key,  # type: ignore
                 temperature=temperature,
                 max_tokens=max_tokens,
+                max_retries=6,
             )
         log.error("Unsupported LLM provider", provider=provider)
         raise ValueError(f"Unsupported LLM provider: {provider}")
