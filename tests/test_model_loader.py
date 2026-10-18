@@ -78,3 +78,19 @@ def test_unknown_llm_provider_is_rejected(clean_env):
 
     with pytest.raises(ValueError):
         ModelLoader().load_llm()
+
+
+def test_github_models_provider_uses_the_openai_compatible_endpoint(clean_env):
+    clean_env.setenv("GITHUB_TOKEN", "gh-test")
+
+    loader = ModelLoader()
+    llm = loader.load_llm("github")
+    judge = loader.load_llm("github", model_name="openai/gpt-4o")
+
+    assert llm.model_name == "openai/gpt-4o-mini"
+    assert judge.model_name == "openai/gpt-4o"
+    assert str(llm.openai_api_base).startswith("https://models.github.ai")
+
+
+def test_fastembed_needs_no_api_key(clean_env):
+    assert ModelLoader._require_key("fastembed") is None
