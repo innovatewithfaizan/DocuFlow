@@ -5,7 +5,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from utils.config_loader import load_config
 from logger.custom_logger import CustomLogger
-from exception.custom_exception import DocuFlowException
+from exception.custom_exception import GroundworkException
 log = CustomLogger().get_logger(__name__)
 
 # The API key each provider needs. "fastembed" runs locally and needs none.
@@ -68,7 +68,7 @@ class ModelLoader:
         value = os.getenv(env_var)
         if not value:
             log.error("Missing environment variable", missing_var=env_var, provider=provider)
-            raise DocuFlowException(f"Missing environment variable {env_var} for provider '{provider}'", sys)
+            raise GroundworkException(f"Missing environment variable {env_var} for provider '{provider}'", sys)
         return value
 
     def load_embeddings(self):
@@ -94,7 +94,7 @@ class ModelLoader:
             raise ValueError(f"Unsupported embedding provider: {provider}")
         except Exception as e:
             log.error("Error loading embedding model", error=str(e))
-            raise DocuFlowException("Failed to load embedding model", e) from e
+            raise GroundworkException("Failed to load embedding model", e) from e
 
     def load_llm(self, provider_key: Optional[str] = None, model_name: Optional[str] = None):
         """Load the LLM for `provider_key` (defaults to LLM_PROVIDER, then config default_llm).

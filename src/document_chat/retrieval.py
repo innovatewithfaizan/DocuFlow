@@ -12,7 +12,7 @@ from langchain_community.vectorstores import FAISS
 
 from utils.model_loader import ModelLoader
 from utils.file_io import original_name
-from exception.custom_exception import DocuFlowException
+from exception.custom_exception import GroundworkException
 from logger.custom_logger import CustomLogger
 log = CustomLogger().get_logger(__name__)
 from prompt.prompt_library import PROMPT_REGISTRY
@@ -53,7 +53,7 @@ class ConversationalRAG:
             log.info("ConversationalRAG initialized", session_id=self.session_id)
         except Exception as e:
             log.error("Failed to initialize ConversationalRAG", error=str(e))
-            raise DocuFlowException("Initialization error in ConversationalRAG", sys)
+            raise GroundworkException("Initialization error in ConversationalRAG", sys)
 
     # ---------- Public API ----------
 
@@ -99,7 +99,7 @@ class ConversationalRAG:
 
         except Exception as e:
             log.error("Failed to load retriever from FAISS", error=str(e))
-            raise DocuFlowException("Loading error in ConversationalRAG", sys)
+            raise GroundworkException("Loading error in ConversationalRAG", sys)
 
     def invoke(self, user_input: str, chat_history: Optional[List[BaseMessage]] = None) -> str:
         """Answer a question; returns only the answer text."""
@@ -111,7 +111,7 @@ class ConversationalRAG:
         """Answer a question and return what it was based on."""
         try:
             if self.chain is None:
-                raise DocuFlowException(
+                raise GroundworkException(
                     "RAG chain not initialized. Call load_retriever_from_faiss() before invoke().", sys
                 )
             chat_history = chat_history or []
@@ -137,7 +137,7 @@ class ConversationalRAG:
             }
         except Exception as e:
             log.error("Failed to invoke ConversationalRAG", error=str(e))
-            raise DocuFlowException("Invocation error in ConversationalRAG", sys)
+            raise GroundworkException("Invocation error in ConversationalRAG", sys)
 
     # ---------- Internals ----------
 
@@ -150,7 +150,7 @@ class ConversationalRAG:
             return llm
         except Exception as e:
             log.error("Failed to load LLM", error=str(e))
-            raise DocuFlowException("LLM loading error in ConversationalRAG", sys)
+            raise GroundworkException("LLM loading error in ConversationalRAG", sys)
 
     @staticmethod
     def _format_docs(docs) -> str:
@@ -169,7 +169,7 @@ class ConversationalRAG:
     def _build_lcel_chain(self):
         try:
             if self.retriever is None:
-                raise DocuFlowException("No retriever set before building chain", sys)
+                raise GroundworkException("No retriever set before building chain", sys)
 
             # 1) Standalone question. Rewriting only helps follow-ups, so a first
             #    question goes to the retriever as-is (saves one LLM call per query).
@@ -191,4 +191,4 @@ class ConversationalRAG:
             log.info("LCEL graph built successfully", session_id=self.session_id)
         except Exception as e:
             log.error("Failed to build LCEL chain", error=str(e), session_id=self.session_id)
-            raise DocuFlowException("Failed to build LCEL chain", sys)
+            raise GroundworkException("Failed to build LCEL chain", sys)

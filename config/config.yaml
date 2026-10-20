@@ -1,5 +1,5 @@
 faiss_db:
-  collection_name: "docuflow"
+  collection_name: "groundwork"
 
 embedding_model:
   # openai | google | fastembed (local, no key). Override per process with

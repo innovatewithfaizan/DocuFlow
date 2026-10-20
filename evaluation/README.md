@@ -1,6 +1,6 @@
 # Evaluation
 
-How well does DocuFlow find the right passage, and do its answers stick to what it found?
+How well does Groundwork find the right passage, and do its answers stick to what it found?
 
 ## Setup
 

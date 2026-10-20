@@ -13,7 +13,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from utils.model_loader import ModelLoader
 from logger.custom_logger import CustomLogger
-from exception.custom_exception import DocuFlowException
+from exception.custom_exception import GroundworkException
 from utils.file_io import _session_id, save_uploaded_files, validate_session_id
 from utils.document_ops import load_documents, concat_for_analysis, concat_for_comparison
 from src.document_chat.retriever_factory import RetrieverSettings, build_retriever
@@ -84,7 +84,7 @@ class FaissManager:
             return self.vs
         
         if not texts:
-            raise DocuFlowException("no existing FAISS index and no data to create one", sys)
+            raise GroundworkException("no existing FAISS index and no data to create one", sys)
         metadatas = metadatas or [{} for _ in texts]
         # Record fingerprints while creating, so a follow-up add_documents() with the
         # same chunks is a no-op. Previously a fresh index stored every chunk twice.
@@ -129,7 +129,7 @@ class ChatIngestor:
         
         except Exception as e:
             self.log.error("Failed to initialize ChatIngestor", error=str(e))
-            raise DocuFlowException("Initialization error in ChatIngestor", e) from e
+            raise GroundworkException("Initialization error in ChatIngestor", e) from e
 
     def _resolve_dir(self, base: Path):
         if self.use_session:
@@ -179,7 +179,7 @@ class ChatIngestor:
             
         except Exception as e:
             self.log.error("Failed to build retriever", error=str(e))
-            raise DocuFlowException("Failed to build retriever", e) from e
+            raise GroundworkException("Failed to build retriever", e) from e
 
             
         
@@ -209,7 +209,7 @@ class DocHandler:
             return save_path
         except Exception as e:
             self.log.error("failed to save PDF", error=str(e), session_id=self.session_id)
-            raise DocuFlowException(f"Failed to save PDF: {str(e)}", e) from e
+            raise GroundworkException(f"Failed to save PDF: {str(e)}", e) from e
     
     
     
@@ -225,7 +225,7 @@ class DocHandler:
             return text
         except Exception as e:
             self.log.error("Failed to read PDF", error=str(e), pdf_path=pdf_path, session_id=self.session_id, pages=len(text_chunks))
-            raise DocuFlowException(f"Could not process PDF: {pdf_path}", e) from e
+            raise GroundworkException(f"Could not process PDF: {pdf_path}", e) from e
         
 
 class DocumentComparator:
@@ -255,7 +255,7 @@ class DocumentComparator:
         
         except Exception as e:
             self.log.error("Error saving PDF files", error=str(e), session_id=self.session_id)
-            raise DocuFlowException("Error saving files", e) from e
+            raise GroundworkException("Error saving files", e) from e
 
     def read_pdf(self, pdf_path: Path)-> str:
         try:
@@ -272,7 +272,7 @@ class DocumentComparator:
             return "\n".join(parts)
         except Exception as e:
             self.log.error("Error reading PDF", file=str(pdf_path), error = str(e))
-            raise DocuFlowException("Error reading PDF", e) from e       
+            raise GroundworkException("Error reading PDF", e) from e       
 
     def combine_documents(self)-> str:
         try:
@@ -286,7 +286,7 @@ class DocumentComparator:
             return combined_text
         except Exception as e:
             self.log.error("Error combining documents", error = str(e), session_id=self.session_id)
-            raise DocuFlowException("Error combining documents", e) from e
+            raise GroundworkException("Error combining documents", e) from e
 
     def clean_old_sessions(self, keep_latest: int = 3):
         try:
@@ -296,7 +296,7 @@ class DocumentComparator:
                 self.log.info("Old session folder deleted", path=str(folder))
         except Exception as e:
             self.log.error("Error cleaning old sessions", error=str(e))
-            raise DocuFlowException("Error cleaning old sessions", e) from e
+            raise GroundworkException("Error cleaning old sessions", e) from e
 
 
     

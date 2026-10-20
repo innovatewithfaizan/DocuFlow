@@ -1,7 +1,7 @@
 """Retrieval and the ConversationalRAG chain, with the LLM mocked."""
 import pytest
 
-from exception.custom_exception import DocuFlowException
+from exception.custom_exception import GroundworkException
 from src.document_chat.retrieval import ConversationalRAG
 from src.document_ingestion.data_ingestion import ChatIngestor
 from tests.helpers import FakeUpload
@@ -61,13 +61,13 @@ def test_k_controls_how_many_chunks_reach_the_llm(indexed_session, fake_llm):
 
 def test_invoke_before_loading_a_retriever_fails_clearly(fake_models):
     rag = ConversationalRAG(session_id="empty")
-    with pytest.raises(DocuFlowException):
+    with pytest.raises(GroundworkException):
         rag.invoke("anything")
 
 
 def test_missing_index_directory_fails_clearly(workdir, fake_models):
     rag = ConversationalRAG(session_id="missing")
-    with pytest.raises(DocuFlowException):
+    with pytest.raises(GroundworkException):
         rag.load_retriever_from_faiss(str(workdir / "does-not-exist"))
 
 
