@@ -21,7 +21,7 @@ from utils.file_io import validate_session_id
 FAISS_BASE = os.getenv("FAISS_BASE", "faiss_index")
 UPLOAD_BASE = os.getenv("UPLOADED_BASE", "data")
 
-app = FastAPI(title="DocuFlow API", version="0.1")
+app = FastAPI(title="Groundwork API", version="0.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -49,7 +49,7 @@ async def service_ui(request: Request):
 
 @app.get("/health")
 def health() -> Dict[str, str]:
-    return {"status": "ok", "service": "docuflow"}
+    return {"status": "ok", "service": "groundwork"}
 
 @app.post("/analyze")
 async def analyze_document(file: UploadFile = File(...)) -> Any:

@@ -1,4 +1,4 @@
-# DocuFlow evaluation: Attention Is All You Need (arXiv:1706.03762v7)
+# Groundwork evaluation: Attention Is All You Need (arXiv:1706.03762v7)
 
 - Embeddings: `fastembed:BAAI/bge-small-en-v1.5`
 - Chunks: 52 (size 1000, overlap 200); questions: 25 (25 have their evidence inside a single chunk)

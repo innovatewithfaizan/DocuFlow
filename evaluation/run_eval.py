@@ -1,5 +1,5 @@
 """
-Evaluate DocuFlow's retrieval and answers on "Attention Is All You Need" (arXiv:1706.03762v7).
+Evaluate Groundwork's retrieval and answers on "Attention Is All You Need" (arXiv:1706.03762v7).
 
 The document goes through the app's real ingestion path (ChatIngestor: PyPDFLoader ->
 RecursiveCharacterTextSplitter -> FAISS), then:
@@ -224,7 +224,7 @@ def _model_name(obj: Any) -> Optional[str]:
 def write_report(out: Path, report: Dict[str, Any]) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.with_suffix(".json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    lines = [f"# DocuFlow evaluation: {report['dataset']['document']}", "",
+    lines = [f"# Groundwork evaluation: {report['dataset']['document']}", "",
              f"- Embeddings: `{report['models']['embeddings']}`",
              f"- Chunks: {report['index']['chunks']} (size {report['index']['chunk_size']}, "
              f"overlap {report['index']['chunk_overlap']}); questions: {report['dataset']['questions']} "

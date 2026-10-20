@@ -5,7 +5,7 @@ from langchain_core.output_parsers import JsonOutputParser
 from langchain.output_parsers import OutputFixingParser
 from utils.model_loader import ModelLoader
 from logger.custom_logger import CustomLogger
-from exception.custom_exception import DocuFlowException
+from exception.custom_exception import GroundworkException
 from prompt.prompt_library import PROMPT_REGISTRY
 from model.models import SummaryResponse,PromptType
 
@@ -34,7 +34,7 @@ class DocumentComparatorLLM:
             return self._format_response(response)
         except Exception as e:
             self.log.error("Error in compare_documents", error=str(e))
-            raise DocuFlowException("Error comparing documents", sys)
+            raise GroundworkException("Error comparing documents", sys)
 
     def _format_response(self, response_parsed: list[dict]) -> pd.DataFrame: #type: ignore
         try:
@@ -42,4 +42,4 @@ class DocumentComparatorLLM:
             return df
         except Exception as e:
             self.log.error("Error formatting response into DataFrame", error=str(e))
-            raise DocuFlowException("Error formatting response", sys)
+            raise GroundworkException("Error formatting response", sys)

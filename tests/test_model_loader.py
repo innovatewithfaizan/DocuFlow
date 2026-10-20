@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from exception.custom_exception import DocuFlowException
+from exception.custom_exception import GroundworkException
 from utils.model_loader import ModelLoader, _load_bundled_api_keys
 
 
@@ -55,7 +55,7 @@ def test_only_the_selected_providers_key_is_required(clean_env):
 
 
 def test_missing_key_names_the_variable(clean_env):
-    with pytest.raises(DocuFlowException, match="OPENAI_API_KEY"):
+    with pytest.raises(GroundworkException, match="OPENAI_API_KEY"):
         ModelLoader().load_embeddings()
 
 

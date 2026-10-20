@@ -24,7 +24,7 @@ def build_index(client, **form):
 
 
 def test_health(client):
-    assert client.get("/health").json() == {"status": "ok", "service": "docuflow"}
+    assert client.get("/health").json() == {"status": "ok", "service": "groundwork"}
 
 
 def test_index_reports_what_was_indexed(client):

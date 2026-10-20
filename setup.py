@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="docuflow",
+    name="groundwork",
     version="0.1.0",
     author="Mohd Faizan",
     description="Modular RAG service: document Q&A, comparison and metadata analysis",

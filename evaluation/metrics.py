@@ -1,5 +1,5 @@
 """
-Scoring for the DocuFlow evaluation. Pure functions, unit-tested in tests/test_evaluation_metrics.py.
+Scoring for the Groundwork evaluation. Pure functions, unit-tested in tests/test_evaluation_metrics.py.
 
 Retrieval
     A question is a *hit* when any of its evidence phrases (short verbatim spans from

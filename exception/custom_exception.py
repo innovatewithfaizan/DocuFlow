@@ -3,7 +3,7 @@ import sys
 import traceback
 from typing import Optional, cast
 
-class DocuFlowException(Exception):
+class GroundworkException(Exception):
     def __init__(self, error_message, error_details: Optional[object] = None):
         # Normalize message
         if isinstance(error_message, BaseException):
@@ -50,7 +50,7 @@ class DocuFlowException(Exception):
         return base
 
     def __repr__(self):
-        return f"DocuFlowException(file={self.file_name!r}, line={self.lineno}, message={self.error_message!r})"
+        return f"GroundworkException(file={self.file_name!r}, line={self.lineno}, message={self.error_message!r})"
 
 
 if __name__ == "__main__":
@@ -58,10 +58,10 @@ if __name__ == "__main__":
     try:
         a = 1 / 0
     except Exception as e:
-        raise DocuFlowException("Division failed", e) from e
+        raise GroundworkException("Division failed", e) from e
 
     # Demo-2: still supports sys (old pattern)
     # try:
     #     a = int("abc")
     # except Exception as e:
-    #     raise DocuFlowException(e, sys)
+    #     raise GroundworkException(e, sys)

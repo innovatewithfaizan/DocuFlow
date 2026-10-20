@@ -1,4 +1,6 @@
-# DocuFlow
+# Groundwork
+
+*Grounded answers from your documents, with citations.* (Formerly DocuFlow.)
 
 [![Tests](https://github.com/innovatewithfaizan/DocuFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/innovatewithfaizan/DocuFlow/actions/workflows/ci.yml)
 [![RAG evaluation](https://github.com/innovatewithfaizan/DocuFlow/actions/workflows/evaluation.yml/badge.svg)](https://github.com/innovatewithfaizan/DocuFlow/actions/workflows/evaluation.yml)
@@ -8,7 +10,7 @@
 Every answer cites its sources (file, and page for PDFs), and retrieval quality is measured with an evaluation that runs in CI.
 
 <!-- Demo: record upload -> index -> question -> cited answer, save as docs/demo.gif, then uncomment: -->
-<!-- ![DocuFlow demo](docs/demo.gif) -->
+<!-- ![Groundwork demo](docs/demo.gif) -->
 > 🎬 **Demo GIF coming soon:** upload a PDF, build the index, ask a question, get a cited answer.
 
 ---
@@ -116,7 +118,7 @@ python -m evaluation.run_eval --embeddings fastembed --retrieval-only   # ~20 s,
 ## Deployment
 
 ```bash
-docker build -t docuflow . && docker run -p 8080:8080 --env-file .env docuflow
+docker build -t groundwork . && docker run -p 8080:8080 --env-file .env groundwork
 ```
 
 [`.github/workflows/aws.yaml`](.github/workflows/aws.yaml) builds the image, pushes it to ECR and deploys to ECS Fargate. The steps are preflight checks → tests → build → deploy, and the workflow runs **only when triggered manually** from the Actions tab. It needs `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` repository secrets. In ECS, an `API_KEYS` JSON secret is expanded into the individual provider keys at startup.

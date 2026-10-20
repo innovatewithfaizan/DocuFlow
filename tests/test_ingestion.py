@@ -1,7 +1,7 @@
 """Loading and saving documents: the first stage of the pipeline."""
 import pytest
 
-from exception.custom_exception import DocuFlowException
+from exception.custom_exception import GroundworkException
 from src.document_ingestion.data_ingestion import ChatIngestor, DocHandler, DocumentComparator
 from utils.document_ops import load_documents
 from utils.file_io import save_uploaded_files, validate_session_id
@@ -89,6 +89,6 @@ def test_invalid_session_ids(session_id):
 
 
 def test_chat_ingestor_rejects_path_traversal(workdir, fake_models):
-    with pytest.raises(DocuFlowException):
+    with pytest.raises(GroundworkException):
         ChatIngestor(temp_base="data", faiss_base="faiss_index", session_id="../../outside")
     assert not (workdir.parent / "outside").exists()
