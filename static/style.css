@@ -98,7 +98,7 @@ h2{margin:0 0 6px 0; font-size:20px}
 .field{display:flex; flex-direction:column; gap:8px}
 label{font-size:13px; color:#cfd6e4; letter-spacing:.2px}
 
-input[type="text"], input[type="number"]{
+input[type="text"], input[type="number"], select{
   background:linear-gradient(180deg,#0d1420,#0a1018);
   color:var(--text);
   border:1px solid var(--border);
@@ -107,7 +107,7 @@ input[type="text"], input[type="number"]{
   outline:none;
   transition:border-color .2s ease, box-shadow .2s ease;
 }
-input[type="text"]:focus, input[type="number"]:focus{
+input[type="text"]:focus, input[type="number"]:focus, select:focus{
   border-color:#2f3a4f;
   box-shadow:0 0 0 3px rgba(124,154,255,.18);
 }
@@ -215,3 +215,7 @@ input:checked + .slider:before{transform:translateX(20px)}
   .grid-3{grid-template-columns:1fr}
   .form-grid .actions, .form-grid-2 .actions{justify-content:stretch}
 }
+
+/* Sources under an answer */
+.sources{margin:10px 0 0; padding-left:18px}
+.sources li{margin:2px 0}

@@ -1,29 +1,51 @@
 faiss_db:
-  collection_name: "document_portal"
-
+  collection_name: "groundwork"
 
 embedding_model:
-  providor: "openai"
+  # openai | google | fastembed (local, no key). Override per process with
+  # EMBEDDING_PROVIDER. An index must be queried with the embedding model it was built with.
+  provider: "openai"
   model_name: "text-embedding-3-small"
+  google_model_name: "models/gemini-embedding-001"
+  local_model_name: "BAAI/bge-small-en-v1.5"
 
 retriever:
-  top_k: 10
+  # similarity | mmr (can be overridden per request on /chat/query).
+  # similarity is the default because it retrieved the evidence more often than MMR
+  # on single-fact questions (evaluation/results/); MMR suits broad, multi-part questions.
+  search_type: "similarity"
+  top_k: 5
+  # MMR fetches fetch_k candidates by similarity, then picks top_k that are
+  # relevant but not redundant. lambda_mult: 1.0 = pure relevance, 0.0 = max diversity.
+  fetch_k: 20
+  lambda_mult: 0.5
+  compression:
+    # Split retrieved chunks into ~piece_size-character pieces, drop near-duplicate
+    # pieces and keep the keep_top_n most similar to the question. Costs one extra
+    # embedding call per query (the retrieved chunks are re-embedded).
+    enabled: false
+    piece_size: 400
+    keep_top_n: 8
+    redundancy_threshold: 0.95
+
+# Used when LLM_PROVIDER is not set
+default_llm: "openai"
 
 llm:
   groq:
     provider: "groq"
-    model_name: "deepseek-r1-distill-llama-70b"
+    model_name: "openai/gpt-oss-120b"
     temperature: 0
     max_output_tokens: 2048
 
   google:
     provider: "google"
-    model_name: "gemini-2.0-flash"
+    model_name: "gemini-2.5-flash"
     temperature: 0
     max_output_tokens: 2048
 
   openai:
     provider: "openai"
     model_name: "gpt-4o"
-    temperature: 0.7
-    max_tokens: 1000
+    temperature: 0
+    max_output_tokens: 1000

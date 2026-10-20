@@ -14,12 +14,14 @@ from src.document_ingestion.data_ingestion import (
 from src.document_analyzer.data_analysis import DocumentAnalyzer
 from src.document_compare.document_comparator import DocumentComparatorLLM
 from src.document_chat.retrieval import ConversationalRAG
+from src.document_chat.retriever_factory import SEARCH_TYPES
 from utils.document_ops import FastAPIFileAdapter, read_pdf_via_handler
+from utils.file_io import validate_session_id
 
 FAISS_BASE = os.getenv("FAISS_BASE", "faiss_index")
 UPLOAD_BASE = os.getenv("UPLOADED_BASE", "data")
 
-app = FastAPI(title="Document Portal API", version="0.1")
+app = FastAPI(title="Groundwork API", version="0.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,15 +35,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
+def _check_session_id(session_id: str) -> None:
+    try:
+        validate_session_id(session_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @app.get("/", response_class=HTMLResponse)
 async def service_ui(request: Request):
-    resp = templates.TemplateResponse("index.html", {"request": request})
+    resp = templates.TemplateResponse(request, "index.html")
     resp.headers["Cache-Control"] = "no-store"
     return resp
 
 @app.get("/health")
 def health() -> Dict[str, str]:
-    return {"status": "ok", "service": "document-portal"}
+    return {"status": "ok", "service": "groundwork"}
 
 @app.post("/analyze")
 async def analyze_document(file: UploadFile = File(...)) -> Any:
@@ -88,6 +96,8 @@ async def chat_build_index(
     k: int = Form(5),
 ) -> Any:
     try:
+        if session_id:
+            _check_session_id(session_id)
         wrapped = [FastAPIFileAdapter(f) for f in files]
         ci = ChatIngestor(
             temp_base=UPLOAD_BASE,
@@ -95,8 +105,8 @@ async def chat_build_index(
             use_session_dirs=use_session_dirs,
             session_id=session_id or None,
         )
-        ci.built_retriver(wrapped, chunk_size=chunk_size, chunk_overlap=chunk_overlap, k=k)
-        return {"session_id": ci.session_id, "k": k, "use_session_dirs": use_session_dirs}
+        ci.build_retriever(wrapped, chunk_size=chunk_size, chunk_overlap=chunk_overlap, k=k)
+        return {"session_id": ci.session_id, "k": k, "use_session_dirs": use_session_dirs, **ci.stats}
     except HTTPException:
         raise
     except Exception as e:
@@ -108,10 +118,18 @@ async def chat_query(
     session_id: Optional[str] = Form(None),
     use_session_dirs: bool = Form(True),
     k: int = Form(5),
+    search_type: Optional[str] = Form(None),
+    compress: Optional[bool] = Form(None),
 ) -> Any:
     try:
+        if search_type is not None and search_type not in SEARCH_TYPES:
+            raise HTTPException(status_code=400, detail=f"search_type must be one of {sorted(SEARCH_TYPES)}")
+        if k < 1:
+            raise HTTPException(status_code=400, detail="k must be >= 1")
         if use_session_dirs and not session_id:
             raise HTTPException(status_code=400, detail="session_id is required when use_session_dirs=True")
+        if use_session_dirs:
+            _check_session_id(session_id)  # type: ignore[arg-type]
 
         # Prepare FAISS index path
         index_dir = os.path.join(FAISS_BASE, session_id) if use_session_dirs else FAISS_BASE  # type: ignore
@@ -120,15 +138,18 @@ async def chat_query(
 
         # Initialize LCEL-style RAG pipeline
         rag = ConversationalRAG(session_id=session_id) #type: ignore
-        rag.load_retriever_from_faiss(index_dir)
+        rag.load_retriever_from_faiss(index_dir, k=k, search_type=search_type, compress=compress)
 
-        # Optional: For now we pass empty chat history
-        response = rag.invoke(question, chat_history=[])
+        # Each request is stateless for now, so there is no chat history
+        result = rag.invoke_with_sources(question, chat_history=[])
 
         return {
-            "answer": response,
+            "answer": result["answer"],
+            "sources": result["sources"],
             "session_id": session_id,
             "k": k,
+            "search_type": rag.settings.search_type,
+            "compressed": rag.settings.compression.enabled,
             "engine": "LCEL-RAG"
         }
 

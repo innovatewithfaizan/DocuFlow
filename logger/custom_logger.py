@@ -3,6 +3,11 @@ import logging
 from datetime import datetime
 import structlog
 
+# Handlers are installed once per process. Every module creates its own
+# CustomLogger, and attaching a new FileHandler each time leaked a file
+# descriptor and an empty log file per call.
+_CONFIGURED = False
+
 class CustomLogger:
     def __init__(self, log_dir="logs"):
         # Ensure logs directory exists
@@ -15,6 +20,9 @@ class CustomLogger:
 
     def get_logger(self, name=__file__):
         logger_name = os.path.basename(name)
+        global _CONFIGURED
+        if _CONFIGURED:
+            return structlog.get_logger(logger_name)
 
         # Configure logging for console + file (both JSON)
         file_handler = logging.FileHandler(self.log_file_path)
@@ -42,6 +50,7 @@ class CustomLogger:
             logger_factory=structlog.stdlib.LoggerFactory(),
             cache_logger_on_first_use=True,
         )
+        _CONFIGURED = True
 
         return structlog.get_logger(logger_name)
 

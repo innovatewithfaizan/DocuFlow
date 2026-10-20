@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Document Portal</title>
+  <title>Groundwork</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- Google Fonts for classy look -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,7 +14,7 @@
   <header class="app-header">
     <div class="brand">
       <span class="logo">📚</span>
-      <h1>Document Portal</h1>
+      <h1>Groundwork</h1>
     </div>
     <nav class="mode-switch">
       <button class="tab-btn active" data-tab="analysis">Document Analysis</button>
@@ -114,6 +114,13 @@
               <label for="chat-k">Top-K</label>
               <input id="chat-k" type="number" value="5" min="1" max="20" />
             </div>
+            <div class="field">
+              <label for="chat-search">Retrieval</label>
+              <select id="chat-search">
+                <option value="similarity" selected>Similarity (top-k)</option>
+                <option value="mmr">MMR (relevant + diverse)</option>
+              </select>
+            </div>
             <div class="field toggle-row">
               <label>Use session-based FAISS</label>
               <label class="switch">
@@ -145,13 +152,14 @@
         <div id="chat-ans" class="result-block">
           <h3>Answer</h3>
           <div class="answer" id="chat-answer">No answer yet.</div>
+          <ul class="sources muted small" id="chat-sources"></ul>
         </div>
       </div>
     </section>
   </main>
 
   <footer class="app-footer">
-    <div>© Document Portal • Demo UI</div>
+    <div>© Groundwork • Demo UI</div>
     <div class="tiny">Frontend only – hook to your FastAPI later.</div>
   </footer>
 
@@ -276,6 +284,9 @@
     const ans      = document.getElementById("chat-answer");
     const useSess  = document.getElementById("chat-sessionized").checked;
     const k        = +document.getElementById("chat-k").value || 5;
+    const search   = document.getElementById("chat-search").value;
+    const srcList  = document.getElementById("chat-sources");
+    srcList.replaceChildren();
 
     if (!q) { ans.textContent = "Please enter a question."; return; }
     if (useSess && !currentSession) {
@@ -290,6 +301,7 @@
       fd.append("question", q);
       fd.append("use_session_dirs", useSess ? "true" : "false");
       fd.append("k", String(k));
+      fd.append("search_type", search);
       if (useSess && currentSession) fd.append("session_id", currentSession);
 
       const res = await fetch(`${API_BASE}/chat/query`, { method: "POST", body: fd });
@@ -297,8 +309,18 @@
         const err = await res.json().catch(()=>({detail:res.statusText}));
         throw new Error(err.detail || `HTTP ${res.status}`);
       }
-      const json = await res.json(); // { answer, ... }
+      const json = await res.json(); // { answer, sources: [{source, page, snippet}], ... }
       ans.textContent = json.answer || "No answer.";
+      const seen = new Set();
+      for (const s of json.sources || []) {
+        const label = s.page ? `${s.source}, page ${s.page}` : s.source;
+        if (seen.has(label)) continue;
+        seen.add(label);
+        const li = document.createElement("li");
+        li.textContent = label;   // file names are user input: never innerHTML
+        li.title = s.snippet || "";
+        srcList.appendChild(li);
+      }
     } catch (e) {
       ans.textContent = "Query failed: " + (e.message || e);
     }

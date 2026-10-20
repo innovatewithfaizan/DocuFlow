@@ -13,9 +13,10 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from utils.model_loader import ModelLoader
 from logger.custom_logger import CustomLogger
-from exception.custom_exception import DocumentPortalException
-from utils.file_io import _session_id, save_uploaded_files
+from exception.custom_exception import GroundworkException
+from utils.file_io import _session_id, save_uploaded_files, validate_session_id
 from utils.document_ops import load_documents, concat_for_analysis, concat_for_comparison
+from src.document_chat.retriever_factory import RetrieverSettings, build_retriever
 
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 
@@ -37,16 +38,19 @@ class FaissManager:
         self.emb = self.model_loader.load_embeddings()
         self.vs: Optional[FAISS] = None
     
-    def _exists(self) -> bool:
-        return(self.index_dir / "index.faiss").exists() and (self.index_dir / "index.pkl").exists()
+    def exists(self) -> bool:
+        return (self.index_dir / "index.faiss").exists() and (self.index_dir / "index.pkl").exists()
     
 
     @staticmethod
     def _fingerprint(text: str, md: Dict[str, Any]) -> str:
+        # Structured rows carry their own id; everything else is keyed by content.
+        # (Keying by source alone gave every chunk of a file the same key, so only
+        # the first chunk of each newly added file was ever indexed.)
         src = md.get("source") or md.get("file_path")
         rid = md.get("row_id")
-        if src is not None:
-            return f"{src}::{'' if rid is None else rid}"
+        if src is not None and rid is not None:
+            return f"{src}::{rid}"
         return hashlib.sha256(text.encode("utf-8")).hexdigest()
      
     def _save_meta(self):
@@ -71,7 +75,7 @@ class FaissManager:
         return len(new_docs)
     
     def load_or_create(self,texts:Optional[List[str]]=None, metadatas: Optional[List[dict]] = None):
-        if self._exists():
+        if self.exists():
             self.vs = FAISS.load_local(
                 str(self.index_dir),
                 embeddings=self.emb,
@@ -80,9 +84,21 @@ class FaissManager:
             return self.vs
         
         if not texts:
-            raise DocumentPortalException("no existing FAISS index and no data to create one", sys)
-        self.vs = FAISS.from_texts(texts=texts, embedding=self.emb, metadatas=metadatas or [])
+            raise GroundworkException("no existing FAISS index and no data to create one", sys)
+        metadatas = metadatas or [{} for _ in texts]
+        # Record fingerprints while creating, so a follow-up add_documents() with the
+        # same chunks is a no-op. Previously a fresh index stored every chunk twice.
+        unique_texts, unique_metas = [], []
+        for text, md in zip(texts, metadatas):
+            key = self._fingerprint(text, md or {})
+            if key in self._meta["rows"]:
+                continue
+            self._meta["rows"][key] = True
+            unique_texts.append(text)
+            unique_metas.append(md)
+        self.vs = FAISS.from_texts(texts=unique_texts, embedding=self.emb, metadatas=unique_metas)
         self.vs.save_local(str(self.index_dir))
+        self._save_meta()
         return self.vs
         
 
@@ -97,7 +113,7 @@ class ChatIngestor:
             self.model_loader = ModelLoader()
             self.log = CustomLogger().get_logger(__name__)
             self.use_session = use_session_dirs
-            self.session_id = session_id or _session_id()
+            self.session_id = validate_session_id(session_id) if session_id else _session_id()
 
             self.temp_base = Path(temp_base); self.temp_base.mkdir(parents=True, exist_ok=True)
             self.faiss_base = Path(faiss_base); self.faiss_base.mkdir(parents=True, exist_ok=True)
@@ -113,7 +129,7 @@ class ChatIngestor:
         
         except Exception as e:
             self.log.error("Failed to initialize ChatIngestor", error=str(e))
-            raise DocumentPortalException("Initialization error in ChatIngestor", e) from e
+            raise GroundworkException("Initialization error in ChatIngestor", e) from e
 
     def _resolve_dir(self, base: Path):
         if self.use_session:
@@ -128,12 +144,16 @@ class ChatIngestor:
         self.log.info("Documents split", chunks=len(chunks), chunk_size=chunk_size, overlap=chunk_overlap)
         return chunks
     
-    def built_retriver( self,
+    def build_retriever( self,
         uploaded_files: Iterable,
         *,
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
-        k: int = 5,):
+        k: Optional[int] = None,
+        search_type: Optional[str] = None,
+        compress: Optional[bool] = None,):
+        """Save, load, chunk and index the files, then return a retriever over the
+        session index. Retrieval settings default to config.yaml's `retriever:` block."""
         try:
             paths = save_uploaded_files(uploaded_files, self.temp_dir)
             docs = load_documents(paths)
@@ -142,25 +162,24 @@ class ChatIngestor:
             
             chunks = self._split(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
             
-            ## FAISS manager very very important class for the docchat
+            # FaissManager owns the on-disk index and de-duplicates chunks across uploads
             fm = FaissManager(self.faiss_dir, self.model_loader)
             
             texts = [c.page_content for c in chunks]
             metas = [c.metadata for c in chunks]
             
-            try:
-                vs = fm.load_or_create(texts=texts, metadatas=metas)
-            except Exception:
-                vs = fm.load_or_create(texts=texts, metadatas=metas)
-                
-            added = fm.add_documents(chunks)
-            self.log.info("FAISS index updated", added=added, index=str(self.faiss_dir))
+            existed = fm.exists()
+            vs = fm.load_or_create(texts=texts, metadatas=metas)
+            added = fm.add_documents(chunks) if existed else len(vs.index_to_docstore_id)
+            self.stats = {"documents": len(docs), "chunks": len(chunks), "added": added}
+            self.log.info("FAISS index updated", index=str(self.faiss_dir), **self.stats)
             
-            return vs.as_retriever(search_type="similarity", search_kwargs={"k": k})
+            settings = RetrieverSettings.from_config(k=k, search_type=search_type, compress=compress)
+            return build_retriever(vs, settings, embeddings=fm.emb)
             
         except Exception as e:
             self.log.error("Failed to build retriever", error=str(e))
-            raise DocumentPortalException("Failed to build retriever", e) from e
+            raise GroundworkException("Failed to build retriever", e) from e
 
             
         
@@ -169,7 +188,7 @@ class DocHandler:
     def __init__(self, data_dir: Optional[str] = None, session_id: Optional[str]=None):
         self.log = CustomLogger().get_logger(__name__)
         self.data_dir = data_dir or os.getenv("DATA_STORAGE_PATH", os.path.join(os.getcwd(), "data", "document_analysis"))
-        self.session_id = session_id or _session_id("session")
+        self.session_id = validate_session_id(session_id) if session_id else _session_id("session")
         self.session_path = os.path.join(self.data_dir, self.session_id)
         os.makedirs(self.session_path, exist_ok=True)
         self.log.info("DocHandler initialized", session_id=self.session_id, session_path=self.session_path)
@@ -190,30 +209,30 @@ class DocHandler:
             return save_path
         except Exception as e:
             self.log.error("failed to save PDF", error=str(e), session_id=self.session_id)
-            raise DocumentPortalException(f"Failed to save PDF: {str(e)}", e) from e
+            raise GroundworkException(f"Failed to save PDF: {str(e)}", e) from e
     
     
     
     def read_pdf(self, pdf_path: str) -> str:
+        text_chunks = []
         try:
-            text_chunks = []
             with fitz.open(pdf_path) as doc:
                 for page_num in range(doc.page_count):
                     page = doc.load_page(page_num)
-                    text_chunks.append(f"\n--- Page{page_num +1} ---\n{page.get_text()}")
-                    text = "\n".join(text_chunks)
-                    self.log.info("PDF read successfully", pdf_path=pdf_path, session_id=self.session_id, pages=len(text_chunks))
-                    return text
+                    text_chunks.append(f"\n--- Page {page_num + 1} ---\n{page.get_text()}")
+            text = "\n".join(text_chunks)
+            self.log.info("PDF read successfully", pdf_path=pdf_path, session_id=self.session_id, pages=len(text_chunks))
+            return text
         except Exception as e:
             self.log.error("Failed to read PDF", error=str(e), pdf_path=pdf_path, session_id=self.session_id, pages=len(text_chunks))
-            raise DocumentPortalException(f"Could not process PDF: {pdf_path}", e) from e
+            raise GroundworkException(f"Could not process PDF: {pdf_path}", e) from e
         
 
 class DocumentComparator:
     def __init__(self, base_dir: str ="data/document_compare", session_id: Optional[str] =None):
         self.log = CustomLogger().get_logger(__name__)
         self.base_dir = Path(base_dir)
-        self.session_id = session_id or _session_id()
+        self.session_id = validate_session_id(session_id) if session_id else _session_id()
         self.session_path = self.base_dir / self.session_id
         self.session_path.mkdir(parents=True, exist_ok=True)
         self.log.info("DocumentComparator initialized", session_path=str(self.session_path))
@@ -221,8 +240,8 @@ class DocumentComparator:
 
     def save_uploaded_files(self, reference_file, actual_file):
         try:
-            ref_path = self.session_path / reference_file.name
-            act_path=self.session_path / actual_file.name
+            ref_path = self.session_path / Path(reference_file.name).name
+            act_path = self.session_path / Path(actual_file.name).name
             for fobj, out in ((reference_file, ref_path), (actual_file, act_path)):
                 if not fobj.name.lower().endswith(".pdf"):
                     raise ValueError("Only PDF is allowed.")
@@ -236,7 +255,7 @@ class DocumentComparator:
         
         except Exception as e:
             self.log.error("Error saving PDF files", error=str(e), session_id=self.session_id)
-            raise DocumentPortalException("Error saving files", e) from e
+            raise GroundworkException("Error saving files", e) from e
 
     def read_pdf(self, pdf_path: Path)-> str:
         try:
@@ -250,10 +269,10 @@ class DocumentComparator:
                     if text.strip():
                         parts.append(f"\n --- Page {page_num +1} --- \n{text}")
             self.log.info("PDF read successfully", file=str(pdf_path), pages=len(parts))
-            return "/n".join(parts)
+            return "\n".join(parts)
         except Exception as e:
             self.log.error("Error reading PDF", file=str(pdf_path), error = str(e))
-            raise DocumentPortalException("Errror readind PDF", e) from e       
+            raise GroundworkException("Error reading PDF", e) from e       
 
     def combine_documents(self)-> str:
         try:
@@ -267,17 +286,17 @@ class DocumentComparator:
             return combined_text
         except Exception as e:
             self.log.error("Error combining documents", error = str(e), session_id=self.session_id)
-            raise DocumentPortalException("Error combining documents", e) from e
+            raise GroundworkException("Error combining documents", e) from e
 
     def clean_old_sessions(self, keep_latest: int = 3):
         try:
             sessions = sorted([f for f in self.base_dir.iterdir() if f.is_dir()], reverse=True)
-            for folder in sessions[keep_latest]:
+            for folder in sessions[keep_latest:]:
                 shutil.rmtree(folder, ignore_errors=True)
                 self.log.info("Old session folder deleted", path=str(folder))
         except Exception as e:
             self.log.error("Error cleaning old sessions", error=str(e))
-            raise DocumentPortalException("Error cleaning old sessions", e) from e
+            raise GroundworkException("Error cleaning old sessions", e) from e
 
 
     
