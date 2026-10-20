@@ -48,7 +48,7 @@ Measured on *Attention Is All You Need* (15 pages, 52 chunks) with 25 hand-writt
 - **An evaluation in CI.** 25 questions over a public paper, run through the app's own ingestion and retrieval code. Retrieval hit rate and MRR are recomputed on every PR that touches the evaluation, with local embeddings, so it needs no secrets and costs nothing. An LLM-as-judge step for answer faithfulness and correctness runs on demand. The evaluation is how I chose similarity over MMR as the default.
 - **An offline test suite.** 75 pytest tests run with no network and no API keys. A deterministic bag-of-words embedding makes retrieval assertions meaningful, and a recording chat model lets tests check exactly what context reached the LLM. Each bug fix has a regression test that fails on the old code.
 - **Swappable providers.** OpenAI, Groq or Gemini for the LLM; OpenAI, Gemini or a local ONNX model (bge-small) for embeddings. Only the keys of the providers in use are required.
-- **Deployment.** A Docker image (non-root, cached dependency layer, no secrets inside) and a GitHub Actions workflow for AWS ECS Fargate that you trigger manually. Keys are injected at runtime from AWS Secrets Manager. CloudFormation for the VPC, ECR and ECS is in `infrastructure/`.
+- **Deployment.** A Docker image (non-root, cached dependency layer, no secrets inside) and a GitHub Actions workflow for AWS ECS Fargate that you trigger manually. Keys are injected at runtime from AWS Secrets Manager. CloudFormation for the VPC, ECS service, logs and IAM is in `infrastructure/`, with a [step-by-step hosting guide](docs/deploy-aws.md).
 
 ---
 
@@ -121,9 +121,16 @@ python -m evaluation.run_eval --embeddings fastembed --retrieval-only   # ~20 s,
 docker build -t groundwork . && docker run -p 8080:8080 --env-file .env groundwork
 ```
 
-[`.github/workflows/aws.yaml`](.github/workflows/aws.yaml) builds the image, pushes it to ECR and deploys to ECS Fargate. The steps are preflight checks → tests → build → deploy, and the workflow runs **only when triggered manually** from the Actions tab. It needs `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` repository secrets. In ECS, an `API_KEYS` JSON secret is expanded into the individual provider keys at startup.
+**AWS:** [docs/deploy-aws.md](docs/deploy-aws.md) is a step-by-step guide to hosting Groundwork on **ECS Fargate**. It covers:
 
-> **Status:** not currently deployed. The last automatic deploy (October 2025) failed because the repository had no AWS credentials configured, and the pipeline has since been fixed and made manual.
+- one Secrets Manager secret holding the API keys;
+- one ECR repository;
+- a single CloudFormation stack ([`infrastructure/groundwork-ecs.yaml`](infrastructure/groundwork-ecs.yaml)) for the VPC, ECS service, logs and a least-privilege IAM role;
+- after that, one-click deploys from GitHub Actions ([`aws.yaml`](.github/workflows/aws.yaml), which runs tests, then builds, pushes and deploys).
+
+The guide also covers costs (about US$25/month for the default size, or near zero when scaled to 0), operations, teardown and what to add before production. The template is validated with `cfn-lint` in CI.
+
+> **Status:** not currently deployed. The last automatic deploy (October 2025) failed because the repository had no AWS credentials configured. Since then the pipeline has been fixed, made manual, and documented.
 
 ## Project structure
 
@@ -138,7 +145,8 @@ prompt/  model/                 prompt templates, Pydantic schemas
 evaluation/                     QA set, harness, metrics, committed results
 tests/                          offline pytest suite
 templates/  static/             web UI
-infrastructure/                 CloudFormation (VPC, ECR, ECS)
+infrastructure/                 CloudFormation: VPC, ECS Fargate service, logs, IAM
+docs/                           AWS hosting guide, deploy IAM policy
 .github/workflows/              tests, evaluation, manual ECS deploy
 ```
 
@@ -147,7 +155,7 @@ infrastructure/                 CloudFormation (VPC, ECR, ECS)
 - Chat is stateless across requests: the API doesn't keep conversation history yet, although the chain supports it.
 - There is no authentication. Session ids act as unguessable handles. FAISS indexes are loaded with pickle, which is only safe because the service reads indexes it wrote itself.
 - The evaluation covers single-fact questions on one document (small N: one question is 4 points). Multi-document and broad questions, where MMR and compression should help, are the next things to add, along with the answer-faithfulness run.
-- The AWS resource names still follow an older naming scheme, and the CloudFormation template needs reconciling with the deploy workflow.
+- Hosting on AWS is documented but not live. The setup has no HTTPS or persistent storage for indexes yet; see [hardening](docs/deploy-aws.md#hardening-for-production).
 
 ## Tech stack
 
