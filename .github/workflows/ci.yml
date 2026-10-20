@@ -24,3 +24,15 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Run tests
         run: pytest -q
+
+  infrastructure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Lint CloudFormation
+        run: |
+          pip install cfn-lint==1.57.2
+          cfn-lint infrastructure/*.yaml

@@ -1,206 +1,264 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/awslabs/goformation/master/schema/cloudformation.schema.json
-AWSTemplateFormatVersion: '2010-09-09'
-Description: Full ECS + ECR + VPC Infra for Document Portal with secrets and logging
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Groundwork on AWS ECS Fargate: a VPC with two public subnets, an ECS cluster and
+  service running one container, CloudWatch logs, and an execution role that can read
+  the API-keys secret. Walkthrough: docs/deploy-aws.md
 
 Parameters:
-  VpcCIDR:
+  ProjectName:
+    Type: String
+    Default: groundwork
+    AllowedPattern: "[a-z][a-z0-9-]{1,30}"
+    Description: Prefix for resource names. The deploy workflow assumes "groundwork".
+  ImageUri:
+    Type: String
+    Description: Image to run, e.g. 123456789012.dkr.ecr.ca-central-1.amazonaws.com/groundwork:v1
+  ApiKeysSecretArn:
+    Type: String
+    AllowedPattern: "arn:aws[a-z-]*:secretsmanager:.+"
+    Description: >-
+      Secrets Manager secret whose value is a JSON object of provider keys,
+      e.g. {"OPENAI_API_KEY": "..."}. Injected into the container as API_KEYS.
+  LlmProvider:
+    Type: String
+    Default: openai
+    AllowedValues: [openai, groq, google]
+  EmbeddingProvider:
+    Type: String
+    Default: openai
+    AllowedValues: [openai, google]
+  TaskCpu:
+    Type: String
+    Default: "512"
+    AllowedValues: ["512", "1024", "2048"]
+    Description: CPU units (1024 = 1 vCPU)
+  TaskMemory:
+    Type: String
+    Default: "1024"
+    AllowedValues: ["1024", "2048", "4096"]
+    Description: Memory in MiB (must be a valid Fargate combination with TaskCpu)
+  DesiredCount:
+    Type: Number
+    Default: 1
+    MinValue: 0
+    MaxValue: 2
+    Description: Running tasks. Set to 0 to stop paying for compute without deleting anything.
+  AllowedCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: Who can reach port 8080. Use your own IP (x.x.x.x/32) to keep the demo private.
+  VpcCidr:
     Type: String
     Default: 10.0.0.0/16
-
-  Subnet1CIDR:
+  PublicSubnet1Cidr:
     Type: String
     Default: 10.0.1.0/24
-
-  Subnet2CIDR:
+  PublicSubnet2Cidr:
     Type: String
     Default: 10.0.2.0/24
-
-  ImageUrl:
-    Type: String
-    Description: ECR Image URI to use for container
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90]
 
 Resources:
-
-  ### ECR Repository
-  MyECRRepository:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: documentportal
-      ImageScanningConfiguration:
-        ScanOnPush: true
-      ImageTagMutability: MUTABLE
-
-  ### VPC, Subnets, Internet Gateway
-  MyVPC:
+  # ---------- Network: one VPC, two public subnets in different AZs ----------
+  Vpc:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: !Ref VpcCIDR 
+      CidrBlock: !Ref VpcCidr
       EnableDnsSupport: true
       EnableDnsHostnames: true
       Tags:
         - Key: Name
-          Value: ecs-vpc
-
-  Subnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref MyVPC 
-      CidrBlock: !Ref Subnet1CIDR
-      AvailabilityZone: !Select [0, !GetAZs '']
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: public-subnet-1
-
-  Subnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref MyVPC
-      CidrBlock: !Ref Subnet2CIDR
-      AvailabilityZone: !Select [1, !GetAZs '']
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: public-subnet-2
+          Value: !Sub ${ProjectName}-vpc
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-igw
 
-  AttachGateway:
+  GatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
-      VpcId: !Ref MyVPC
+      VpcId: !Ref Vpc
       InternetGatewayId: !Ref InternetGateway
 
-  RouteTable:
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PublicSubnet1Cidr
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-public-1
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PublicSubnet2Cidr
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-public-2
+
+  PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
-      VpcId: !Ref MyVPC
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-public
 
-  PublicRoute:
+  DefaultRoute:
     Type: AWS::EC2::Route
-    DependsOn: AttachGateway
+    DependsOn: GatewayAttachment
     Properties:
-      RouteTableId: !Ref RouteTable
+      RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  RouteAssoc1:
+  PublicSubnet1Routes:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref Subnet1
-      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
 
-  RouteAssoc2:
+  PublicSubnet2Routes:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref Subnet2
-      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
 
-  ### ECS Cluster
-  ECSCluster:
-    Type: AWS::ECS::Cluster
+  ServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      ClusterName: document-portal-cluster
+      GroupDescription: !Sub Port 8080 to the ${ProjectName} container
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: !Ref AllowedCidr
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-service
 
-  ### ECS Execution Role with Secrets + Logs
-  ECSExecutionRole:
+  # ---------- Logs and permissions ----------
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/${ProjectName}
+      RetentionInDays: !Ref LogRetentionDays
+
+  TaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: ecsTaskExecutionRole
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
+      ManagedPolicyArns:
+        # pull from ECR and write logs
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
       Policies:
-        - PolicyName: ecs-secrets-logs-access
+        - PolicyName: read-api-keys-secret
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action:
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                  - logs:CreateLogGroup
-                Resource: "*"
-              - Effect: Allow
-                Action:
-                  - secretsmanager:GetSecretValue
-                Resource: "*"
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref ApiKeysSecretArn
 
-  ### Security Group
-  ECSSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
+  # ---------- ECS ----------
+  Cluster:
+    Type: AWS::ECS::Cluster
     Properties:
-      GroupDescription: Allow HTTP access to container
-      VpcId: !Ref MyVPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 8080
-          ToPort: 8080
-          CidrIp: 0.0.0.0/0
+      ClusterName: !Sub ${ProjectName}-cluster
 
-  ### ECS Task Definition
-  ECSTaskDefinition:
+  TaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Family: documentportaltd
-      Cpu: "1024"
-      Memory: "8192"
+      Family: !Ref ProjectName
+      Cpu: !Ref TaskCpu
+      Memory: !Ref TaskMemory
       NetworkMode: awsvpc
-      RequiresCompatibilities:
-        - FARGATE
-      ExecutionRoleArn: !GetAtt ECSExecutionRole.Arn
+      RequiresCompatibilities: [FARGATE]
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: X86_64
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
       ContainerDefinitions:
-        - Name: document-portal-container
-          Image: !Ref ImageUrl
+        - Name: !Ref ProjectName
+          Image: !Ref ImageUri
           Essential: true
           PortMappings:
             - ContainerPort: 8080
+              Protocol: tcp
           Environment:
-            - Name: LANGCHAIN_PROJECT
-              Value: DOCUMENT PORTAL
+            - Name: LLM_PROVIDER
+              Value: !Ref LlmProvider
+            - Name: EMBEDDING_PROVIDER
+              Value: !Ref EmbeddingProvider
           Secrets:
-            - Name: GROQ_API_KEY
-              ValueFrom: arn:aws:secretsmanager:us-east-1:685057748560:secret:GROQ_API_KEY
-            - Name: HF_TOKEN
-              ValueFrom: arn:aws:secretsmanager:us-east-1:685057748560:secret:HF_TOKEN
-            - Name: GOOGLE_API_KEY
-              ValueFrom: arn:aws:secretsmanager:us-east-1:685057748560:secret:GOOGLE_API_KEY
-            - Name: LANGCHAIN_API_KEY
-              ValueFrom: arn:aws:secretsmanager:us-east-1:685057748560:secret:LANGCHAIN_API_KEY
+            # The app expands this JSON into OPENAI_API_KEY, GROQ_API_KEY, ... at startup
+            - Name: API_KEYS
+              ValueFrom: !Ref ApiKeysSecretArn
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=3)" || exit 1
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: /ecs/documentportal
+              awslogs-group: !Ref LogGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
 
-  ### ECS Service
-  ECSService:
+  Service:
     Type: AWS::ECS::Service
-    DependsOn: AttachGateway
+    DependsOn: DefaultRoute
     Properties:
-      ServiceName: document-portal-service
-      Cluster: !Ref ECSCluster
+      ServiceName: !Sub ${ProjectName}-service
+      Cluster: !Ref Cluster
       LaunchType: FARGATE
-      DesiredCount: 1
+      DesiredCount: !Ref DesiredCount
+      TaskDefinition: !Ref TaskDefinition
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
       NetworkConfiguration:
         AwsvpcConfiguration:
+          # Public IP so the task can pull from ECR and be reached without a load balancer
           AssignPublicIp: ENABLED
-          Subnets:
-            - !Ref Subnet1
-            - !Ref Subnet2
-          SecurityGroups:
-            - !Ref ECSSecurityGroup
-      TaskDefinition: !Ref ECSTaskDefinition
+          Subnets: [!Ref PublicSubnet1, !Ref PublicSubnet2]
+          SecurityGroups: [!Ref ServiceSecurityGroup]
 
 Outputs:
-  ECSClusterName:
-    Value: !Ref ECSCluster
-
-  TaskDefinitionArn:
-    Value: !Ref ECSTaskDefinition
+  ClusterName:
+    Value: !Ref Cluster
+  ServiceName:
+    Value: !GetAtt Service.Name
+  TaskFamily:
+    Value: !Ref ProjectName
+  LogGroupName:
+    Value: !Ref LogGroup
+  TaskExecutionRoleArn:
+    Description: Needed for the deploy user's iam:PassRole permission
+    Value: !GetAtt TaskExecutionRole.Arn

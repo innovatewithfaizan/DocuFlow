@@ -20,7 +20,7 @@ PROVIDER_KEYS = {
 def _load_bundled_api_keys() -> None:
     """
     On ECS the task definition injects every key as one JSON secret named API_KEYS
-    (see .github/workflows/task_definition.json). Expand it into the individual
+    (see infrastructure/groundwork-ecs.yaml). Expand it into the individual
     variables the loaders read. Variables that are already set take precedence.
     """
     raw = os.getenv("API_KEYS")
