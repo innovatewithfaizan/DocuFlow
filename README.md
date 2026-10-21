@@ -2,8 +2,8 @@
 
 *Grounded answers from your documents, with citations.* (Formerly DocuFlow.)
 
-[![Tests](https://github.com/innovatewithfaizan/DocuFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/innovatewithfaizan/DocuFlow/actions/workflows/ci.yml)
-[![RAG evaluation](https://github.com/innovatewithfaizan/DocuFlow/actions/workflows/evaluation.yml/badge.svg)](https://github.com/innovatewithfaizan/DocuFlow/actions/workflows/evaluation.yml)
+[![Tests](https://github.com/innovatewithfaizan/groundwork/actions/workflows/ci.yml/badge.svg)](https://github.com/innovatewithfaizan/groundwork/actions/workflows/ci.yml)
+[![RAG evaluation](https://github.com/innovatewithfaizan/groundwork/actions/workflows/evaluation.yml/badge.svg)](https://github.com/innovatewithfaizan/groundwork/actions/workflows/evaluation.yml)
 
 **A modular retrieval-augmented generation (RAG) service for asking questions about your documents, comparing PDFs and extracting metadata.** It runs on FastAPI, LangChain (LCEL) and FAISS, and you can swap between OpenAI, Groq and Gemini in one config file.
 
@@ -80,8 +80,8 @@ flowchart LR
 ## Quickstart
 
 ```bash
-git clone https://github.com/innovatewithfaizan/DocuFlow.git
-cd DocuFlow
+git clone https://github.com/innovatewithfaizan/groundwork.git
+cd groundwork
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
